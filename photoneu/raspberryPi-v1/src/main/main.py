@@ -37,6 +37,24 @@ def endSystem():
     ser.close()
     exit()
 
+def on_min_area_trackbar(val):
+ global minMicePixelArea
+ minMicePixelArea = val
+ cv.setTrackbarPos( min_mice_area_name, window_detection_name, minMicePixelArea )
+
+def on_max_area_trackbar(val):
+ global maxMicePixelArea
+ maxMicePixelArea = val
+ cv.setTrackbarPos( max_mice_area_name, window_detection_name, maxMicePixelArea )
+
+def on_high_V_thresh_trackbar(val):
+ global low_V
+ global high_V
+ high_V = val
+ high_V = max(high_V, low_V+1)
+ cv.setTrackbarPos(high_V_name, window_detection_name, high_V)
+
+
 def on_low_V_thresh_trackbar(val):
  global low_V
  global high_V
@@ -93,18 +111,20 @@ def controlLoop():
     
  color_area_num = len(contours) # Count the number of contours
 
- if color_area_num > 0: 
-     for i in contours:    # Traverse all contours
-         # TODO: descartar lo que no sea raton poniendo un rango de w y h
+ if color_area_num > 0:
+    text = "number of mice: " + str(color_area_num) 
+    cv.putText(frame, text,(10,20), cv.FONT_HERSHEY_SIMPLEX, 1,(0,0,255),1)# Add character description
+    for i in contours:    # Traverse all contours
+         # TODO: descartar lo que no sea raton poniendo un rango de pixeles blancos
          x,y,w,h = cv.boundingRect(i)      # Decompose the contour into the coordinates of the upper left corner and the width and height of the recognition object
 
             # Draw a rectangle on the image (picture, upper left corner coordinate, lower right corner coordinate, color, line width)
          if w >= 8 and h >= 8: # 
-           cv.rectangle(frame,(x,y),(x+w,y+h),(120,20,200),2)  # Draw a rectangular frame
+           cv.rectangle(frame,(x,y),(x+w,y+h),(120,20,200),2)  # Draw a rectangular frame. Color purpura
          if( (w * h > minMicePixelArea) & (w * h < maxMicePixelArea)):
-           cv.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)  # Draw a rectangular frame
+           cv.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)  # Draw a rectangular frame. Color verde
            x,y,w,h = cv.boundingRect(i)
-           text = "mice"# + str(contours.index(i))
+           text = "mice #" + str(contours.index(i))
            pointText = str(x) + ", " + str(y)
            cv.putText(frame, text,(x,y), cv.FONT_HERSHEY_SIMPLEX, 1,(0,0,255),1)# Add character description
            cv.putText(frame, pointText ,(x,y+40), cv.FONT_HERSHEY_SIMPLEX, 1,(0,0,255),1)# Add character description
@@ -137,10 +157,15 @@ def controlLoop():
 max_value = 255
 low_V = 0
 high_V = 20 # maximo valor bajo el cual se considera color negro
+minMicePixelArea = 140 * 70 # min size in pixels of a mouse
+maxMicePixelArea = 130 * 140 # max size in pixels of a mouse
+
 window_capture_name = 'Video Capture'
 window_detection_name = 'Object Detection'
 low_V_name = 'Low V'
 high_V_name = 'High V'
+min_mice_area_name = 'Min Mice Pixel Area'
+max_mice_area_name = 'Max Mice Pixel Area'
 
 port = '/dev/ttyACM0'
 baudrate = 115200
@@ -154,10 +179,14 @@ parser = argparse.ArgumentParser(description='Code for Thresholding Operations u
 parser.add_argument('--camera', help='Camera divide number.', default=0, type=int)
 args = parser.parse_args()
 cap = cv.VideoCapture(args.camera)
-cv.namedWindow(window_capture_name)
-cv.namedWindow(window_detection_name)
+cv.namedWindow( window_capture_name )
+cv.namedWindow( window_detection_name )
 cv.createTrackbar(low_V_name, window_detection_name , low_V, max_value, on_low_V_thresh_trackbar)
 cv.createTrackbar(high_V_name, window_detection_name , high_V, max_value, on_high_V_thresh_trackbar)
+cv.createTrackbar(min_mice_area_name, window_detection_name , 6000, 20000, on_min_area_trackbar)
+cv.createTrackbar(max_mice_area_name, window_detection_name , 20000, 40000, on_max_area_trackbar)
+#un raton deberia ocupar un area aproximada de entre 10.000 y 25.000 pixeles^2
+
 x_min = 0  #limits in pixels
 x_max = 469
 y_min = 0
@@ -165,16 +194,13 @@ y_max = 349
 x_head_min = 0
 x_head_max = 19430
 x_min_thres = 2 # umbral entre valores de pixeles para considerar que si hay  movimiento
-x_max_thres = 120 
+x_max_thres = 60 #120
 x_old = 0
 y_head_min = 0
 y_head_max = 24272
 y_min_thres = 2
 y_max_thres = 120
 y_old = 0
-
-minMicePixelArea = 140 * 70 # size in pixels of a mouse
-maxMicePixelArea = 130 * 140 # size in pixels of a mouse
 
 initSystem()
 time.sleep(7)
