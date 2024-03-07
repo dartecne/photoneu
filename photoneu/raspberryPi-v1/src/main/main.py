@@ -124,7 +124,7 @@ def controlLoop():
          if( (w * h > minMicePixelArea) & (w * h < maxMicePixelArea)):
            cv.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)  # Draw a rectangular frame. Color verde
            x,y,w,h = cv.boundingRect(i)
-           text = "mice #" + str(contours.index(i))
+          # text = "mice #" + str(contours.index(i))
            pointText = str(x) + ", " + str(y)
            cv.putText(frame, text,(x,y), cv.FONT_HERSHEY_SIMPLEX, 1,(0,0,255),1)# Add character description
            cv.putText(frame, pointText ,(x,y+40), cv.FONT_HERSHEY_SIMPLEX, 1,(0,0,255),1)# Add character description
