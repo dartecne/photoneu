@@ -44,6 +44,8 @@ while True:
      break
  frame = cv.blur(frame, (8,8))
  gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+ rows = gray.shape[0]
+
  # find circles
  circles = cv.HoughCircles(gray, cv.HOUGH_GRADIENT, 1, rows / 8,
                                param1=100, param2=30,
@@ -65,7 +67,6 @@ while True:
  frame_threshold = cv.morphologyEx(mask, cv.MORPH_OPEN, kernel_5,iterations=1)              # Perform an open operation on the image 
  # Find the contour in morphologyEx_img, and the contours are arranged according to the area from small to large.
  _tuple = cv.findContours( frame_threshold,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE ) 
- rows = gray.shape[0]
  # compatible with opencv3.x and openc4.x
  if len(_tuple) == 3:
      _, contours, hierarchy = _tuple
@@ -78,7 +79,7 @@ while True:
      for i in contours:    # Traverse all contours
       approx = cv.approxPolyDP( 
         i, 0.01 * cv.arcLength(i, True), True)
-      print(approx)
+      print(len(approx))
       M = cv.moments(i) 
       if M['m00'] != 0.0: 
         x = int(M['m10']/M['m00']) 
