@@ -1,7 +1,5 @@
 from __future__ import print_function
 import cv2 as cv
-from picamera.array import PiRGBArray
-from picamera import PiCamera
 
 import argparse
 import numpy as np
@@ -13,7 +11,8 @@ import serial
 # TODO:
 # - mejorar la deteccion del raton para evitar falsos positivos
 # - evitar el ruido de los motores
-# - filtrar el movimiento para hacerlo suave
+# - integrar un PD
+# - integrar el mtodo de calibracin mediante el LED
 
 def mapValue(vin, minin, maxin, minout, maxout ) :
     if(vin > maxin): vin = maxin

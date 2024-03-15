@@ -1,7 +1,7 @@
 from __future__ import print_function
 import cv2 as cv
-from picamera.array import PiRGBArray
-from picamera import PiCamera
+#from picamera.array import PiRGBArray
+#from picamera import PiCamera
 import argparse
 import numpy as np
 import time
@@ -31,6 +31,7 @@ def on_high_V_thresh_trackbar(val):
  high_V = max(high_V, low_V+1)
  cv.setTrackbarPos(high_V_name, window_detection_name, high_V)
 
+###############
 parser = argparse.ArgumentParser(description='Code for Thresholding Operations using inRange tutorial.')
 parser.add_argument('--camera', help='Camera divide number.', default=0, type=int)
 args = parser.parse_args()
@@ -44,6 +45,7 @@ x_crop_max = 30
 y_crop_min = 30
 y_crop_max = 30
 
+#@TODO: separar la cola del raton del cuerpo
 while True: 
  ret, frame = cap.read()
  if frame is None:
@@ -67,13 +69,7 @@ while True:
  if color_area_num > 0: 
      for i in contours:    # Traverse all contours
          x,y,w,h = cv.boundingRect(i)      # Decompose the contour into the coordinates of the upper left corner and the width and height of the recognition object
-
-            # Draw a rectangle on the image (picture, upper left corner coordinate, lower right corner coordinate, color, line width)
-         if w >= 8 and h >= 8: # Because the picture is reduced to a quarter of the original size, if you want to draw a rectangle on the original picture to circle the target, you have to multiply x, y, w, h by 4.
-#              x = x * 4
-#              y = y * 4 
-#              w = w * 4
-#              h = h * 4
+         if w >= 16 and w < 300 and h >= 16 and h < 300: # Because the picture is reduced to a quarter of the original size, if you want to draw a rectangle on the original picture to circle the target, you have to multiply x, y, w, h by 4.
            cv.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)  # Draw a rectangular frame
            cv.putText(frame,"mice",(x,y), cv.FONT_HERSHEY_SIMPLEX, 1,(0,0,255),2)# Add character description
 
