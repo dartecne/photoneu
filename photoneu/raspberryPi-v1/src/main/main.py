@@ -10,7 +10,8 @@ import serial
 # TODO:
 # - mejorar la deteccion del raton para evitar falsos positivos
 # - evitar el ruido de los motores
-# - filtrar el movimiento para hacerlo suave
+# - integrar un PD
+# - integrar el mtodo de calibracin mediante el LED
 
 def mapValue(vin, minin, maxin, minout, maxout ) :
     if(vin > maxin): vin = maxin
