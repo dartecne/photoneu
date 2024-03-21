@@ -1,8 +1,5 @@
 from __future__ import print_function
 import cv2 as cv
-from picamera.array import PiRGBArray
-from picamera import PiCamera
-
 import argparse
 import numpy as np
 import time
