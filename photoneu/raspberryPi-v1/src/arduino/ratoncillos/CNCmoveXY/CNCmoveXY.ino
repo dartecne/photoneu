@@ -38,7 +38,8 @@ bool stop = true;
 
 void setup() {
  	Serial.begin(115200);
-  while( !Serial );
+// 	Serial.begin( 9600 );
+//  while( !Serial );
  	pinMode(enPin, OUTPUT);
  	digitalWrite(enPin, LOW);
 
@@ -61,8 +62,8 @@ void setup() {
 //  testYZ();
 //  microsBtwnSteps = minMicrosBtwnSteps;
   microsBtwnSteps = maxMicrosBtwnSteps;
- 	Serial.println("CNC Shield Initialized");
-  calibrate();
+ 	Serial.println("CNC Shield Initialized OK");
+//  calibrate();
   setPoint( xMax/2, yMax/2 );
   stop = false;
 
@@ -81,6 +82,8 @@ void loop() {
 //  if( xSP == xPos & ySP == yPos ) Serial.println( "DONE!" );;
   delayMicroseconds(microsBtwnSteps);  
   if(readSerialData() > 0) setPoint(xSP, ySP);
+  else sendSerialData();
+//  delay(60);
 }
 
 int readSerialData() {
@@ -98,6 +101,21 @@ int readSerialData() {
 //  Serial.println( xSP );
   if(str[6] == 'Y') ySP = string2number( str, 7, 5 );
   return str.length();
+}
+
+int sendSerialData() {
+  String msg = String(millis());
+  /*msg = "X";
+  msg += (String) 123456;
+  msg += "Y"; 
+  msg += "098765";
+*/  
+  msg += ',';
+  msg += xPos;
+  msg += ',';
+  msg += yPos;
+  Serial.println(msg);
+  return msg.length();
 }
 
 void printStr( String str ) {
