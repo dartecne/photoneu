@@ -26,7 +26,7 @@ unsigned long microsBtwnSteps = 2000; // milliseconds
 unsigned long curMicros;
 unsigned long prevStepMicros = 0;
 
-int xPos = 0, yPos = 0;
+int xPos = 0, yPos = 0; // posicion instantánea del cabezal
 int yMax = 1540;  // valores aproximados obtenidos después de la calibración
 int xMax = 1250;
 int xSP = 0, ySP = 0; // Set Point, donde debe ir el cabezal
@@ -55,7 +55,7 @@ void setup() {
 //  testX();
 //  testYZ();
  	Serial.println("CNC Shield Initialized");
-  calibrate();
+//  calibrate();
   setPoint( xMax/2, yMax/2 );
   stop = false;
 
@@ -74,16 +74,29 @@ void loop() {
 //  if( xSP == xPos & ySP == yPos ) Serial.println( "DONE!" );;
   delayMicroseconds(microsBtwnSteps);  
   if(readSerialData() > 0) setPoint(xSP, ySP);
+  else sendSerialData();
+  delay(100);
 }
 
 int readSerialData() {
   if(!Serial.available()) return 0; // espera datos
   String str = Serial.readString();
-//  if(str.length() != 10 ) return;X
+//  if(str.length() != 10 ) return;
   if(str[0] == 'X') xSP = string2number( str, 1, 4 );
 //  Serial.println( xSP );
   if(str[5] == 'Y') ySP = string2number( str, 6, 4 );
+  if(str == "C") calibrate();
   return str.length();
+}
+
+int sendSerialData() {
+  String msg = String();
+  msg = "X";
+  msg += "123456";
+  msg += "Y"; 
+  msg += "098765";
+  Serial.println(msg);
+  return msg.length();
 }
 
 int string2number(String str, int init, int num) {
@@ -98,7 +111,7 @@ int string2number(String str, int init, int num) {
 * Busca el (0,0)
 */
 void calibrate() {
-  Serial.println("Calibrating...");
+//  Serial.println("Calibrating...");
   setYdirection(HIGH);
   while( digitalRead(limitYPin) ) {
     singleStep( stepYPin );
@@ -111,8 +124,8 @@ void calibrate() {
     singleStep( stepZPin );
     delayMicroseconds(microsBtwnSteps);
   }
-  Serial.println("Y calibrated!");
-  Serial.print("Y steps: ");Serial.println( yPos );
+//  Serial.println("Y calibrated!");
+//  Serial.print("Y steps: ");Serial.println( yPos );
   yPos = yMax;
   setXdirection(HIGH);
   while( digitalRead(limitXPin) ) {
@@ -124,8 +137,8 @@ void calibrate() {
     singleStep( stepXPin );
     delayMicroseconds(microsBtwnSteps);
   }
-  Serial.println("X calibrated!");
-  Serial.print("X steps: ");Serial.println( xPos );
+//  Serial.println("X calibrated!");
+//  Serial.print("X steps: ");Serial.println( xPos );
   xPos = xMax;
 }
 
@@ -133,8 +146,8 @@ void setPoint( unsigned int x, unsigned int y ) {
   xSP = x;
   ySP = y;
   stop = false;
-  Serial.print( "Going to xSP: " ); Serial.print(xSP); 
-  Serial.print(" ySP: "); Serial.println( ySP );
+//  Serial.print( "Going to xSP: " ); Serial.print(xSP); 
+//  Serial.print(" ySP: "); Serial.println( ySP );
 }
 
 void setDirection( bool xD, bool yD ) {
@@ -169,7 +182,7 @@ void singleStep( int sPin) {
   if(yPos < 0 ) yPos = 0;
 //  Serial.print(xPos); Serial.print(", "); Serial.println(yPos);
 
-  checkLimits();
+//  checkLimits();
 }
 
 void checkLimits() {
