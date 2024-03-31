@@ -92,7 +92,7 @@ int readSerialData() {
 int sendSerialData() {
   String msg = String();
   msg = "X";
-  msg += "123456";
+  msg += str(123456);
   msg += "Y"; 
   msg += "098765";
   Serial.println(msg);
