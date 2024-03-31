@@ -35,6 +35,8 @@ int yMax = 24272;  // resolucion de 1/16
 int xMax = 19430;  // 19431 con una resolucion de 1/16
 int xSP = 0, ySP = 0; // Set Point, donde debe ir el cabezal
 bool stop = true;
+int tau = 500; // time between writes ms
+long lastSend = 0;
 
 void setup() {
  	Serial.begin(115200);
@@ -62,11 +64,11 @@ void setup() {
 //  testYZ();
 //  microsBtwnSteps = minMicrosBtwnSteps;
   microsBtwnSteps = maxMicrosBtwnSteps;
- 	Serial.println("CNC Shield Initialized OK");
+// 	Serial.println("CNC Shield Initialized OK");
 //  calibrate();
   setPoint( xMax/2, yMax/2 );
   stop = false;
-
+  lastSend = millis();
 }
 
 void loop() {
@@ -82,7 +84,10 @@ void loop() {
 //  if( xSP == xPos & ySP == yPos ) Serial.println( "DONE!" );;
   delayMicroseconds(microsBtwnSteps);  
   if(readSerialData() > 0) setPoint(xSP, ySP);
-  else sendSerialData();
+  else if( millis() - lastSend > tau) {
+    sendSerialData();
+    lastSend = millis();
+  }
 //  delay(60);
 }
 
@@ -92,11 +97,11 @@ int readSerialData() {
 //  str = Serial.readString();
   str = Serial.readStringUntil('\0');
   str.trim();
-  Serial.print("Serial Received: ");Serial.println(str);
-  Serial.print("length: "); Serial.println(str.length());
+//  Serial.print("Serial Received: ");Serial.println(str);
+ // Serial.print("length: "); Serial.println(str.length());
 //  if(str.length() != 10 ) return;
  // printStr(str);
-  Serial.println(  "Getting values..." );
+//  Serial.println(  "Getting values..." );
   if(str[0] == 'X') xSP = string2number( str, 1, 5 );
 //  Serial.println( xSP );
   if(str[6] == 'Y') ySP = string2number( str, 7, 5 );
