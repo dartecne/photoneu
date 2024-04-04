@@ -103,6 +103,7 @@ int readSerialData() {
 //      if(str[6] == 'Y') ySP = string2number( str, 7, 5 );
     ySP = string2number( str, 7, 5 );
   }
+//  } else if( str[0] == 'Q' ) send
   return str.length();
 }
 
@@ -207,7 +208,7 @@ void singleStep( int sPin) {
   if(yPos < 0 ) yPos = 0;
 //  Serial.print(xPos); Serial.print(", "); Serial.println(yPos);
 
-  checkLimits();
+ // checkLimits();
 }
 
 void checkLimits() {

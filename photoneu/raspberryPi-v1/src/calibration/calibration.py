@@ -16,7 +16,7 @@ high_V_name = 'High V'
 port = '/dev/ttyACM0'
 baudrate = 115200
 filename = "data.dat"
-move_flag = True
+state = 0 # 0 - stop, 1- moving, 
 A = (1.1, 1.1) #coeficientes de calibración
 B = (1.1, 1.1)
 
@@ -100,16 +100,21 @@ def sendCode( msg ) :
     print(">>> writing... ")
     msg += "\0"
     ser.write( msg.encode(encoding= 'ascii') )
-#    while ser.inWaiting() > 0:
-#        print (".")
-#        print ("<<<" + ser.readline().decode() )
+    while ser.inWaiting() > 0:
+        print (".")
+        print ("<<<" + ser.readline().decode() )
+
+def moveHead( x_head, y_head ):
+    msg = "X" + str(int(x_head)).zfill(5) + "Y" + str(int(y_head)).zfill(5) 
+    sendCode(msg)
+
                 
 def getMotorPosition():   
     msg = "P\0"
     ser.write( msg.encode(encoding= 'ascii') )
     line = ser.readline().decode('utf-8').rstrip()
-    print("<<< reading... ")
-    print(line)
+#    print("<<< reading... ")
+#    print(line)
 #    print(len(line.split(",")))
     timestamp, x_head, y_head = 0,0,0
     if len(line.split(",")) == 3:
@@ -118,6 +123,10 @@ def getMotorPosition():
 
 def sendCalibrate() :
     msg = "C\0"
+    ser.write( msg.encode(encoding= 'ascii') )    
+
+def checkSP() :
+    msg = "Q\0"
     ser.write( msg.encode(encoding= 'ascii') )    
 
 def pixels2steps( point ) :   
@@ -138,10 +147,13 @@ cv.namedWindow(window_capture_name)
 cv.namedWindow(window_detection_name)
 
 initSystem()    
-#sendCalibrate() 
+sendCalibrate() 
+time.sleep(7)
+time.sleep(7)
+
 
 ######## loop  ##########
-#enviar el cabezal al (0,0) y luego al centro
+# enviar el cabezal al (0,0) y luego al centro
 # buscar circulo rojo (cabezal) y guardar la posicion x0, y0
 # mover el cabezal en x e y, y guardar la posición x1, y1
 # obtener los coeficientes A, B
@@ -155,7 +167,7 @@ while True:
  gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
  rows = gray.shape[0]
  hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)              # Convert from BGR to HSV
- kernel = np.ones((3,3),np.uint8) 
+ kernel = np.ones((6,6),np.uint8) 
  # filtro del rojo
  mask = cv.inRange(hsv,np.array([0, 60, 60]), np.array([14, 255, 255]) ) # red HSV: 0,4
  mask_2 = cv.inRange(hsv, (160,0,0), (180,255,255)) 
@@ -164,17 +176,41 @@ while True:
  
 # circles = findHoughCircles(frame_threshold)
 # contours = findContours(frame_threshold)
+ x_cam, y_cam =  findContours(frame, frame_threshold)
  
  cv.imshow(window_detection_name, frame_threshold)
  cv.imshow(window_capture_name, frame)
  line = ""
-# t, x_head, y_head = getMotorPosition()    
- x_cam, y_cam =  findContours(frame, frame_threshold)
- #line = str(t) + \
- #    "," + str(x_head) + "," + str(y_head) + \
- #    "," + str(x_cam) + "," + str(y_cam)
- #print(line)    
- #fd.write( line )
+ t, x_head, y_head = getMotorPosition()    
+ if state == 0: # sin tomar la posicion 0
+     x_cam_0 = x_cam
+     y_cam_0 = y_cam
+     line = str(t) + \
+         "," + str(x_head) + "," + str(y_head) + \
+         "," + str(x_cam_0) + "," + str(y_cam_0)
+     #print(line)
+     x_head_0 = x_head
+     y_head_0 = y_head
+     moveHead( x_head + 1000, y_head+1000 ) 
+     state = 1
+
+ if state == 1:
+ERROR->    if x_head == (x_head_0 + 1000) & y_head == (y_head_0 + 1000): # ya ha llegado
+        x_cam_1 = x_cam
+        y_cam_1 = y_cam
+        x_head_1 = x_head
+        y_head_1 = y_head
+        state = 3 
+ if state == 3:
+#    head = A cam + B        
+    A[0] = ( x_head_0 - x_head_1 ) / ( x_cam_0 - x_cam_1 )
+    B[0] = x_head_1 - A[0] * x_cam_1
+    A[1] = ( y_head_0 - y_head_1 ) / ( y_cam_0 - y_cam_1 )
+    B[1] = y_head_1 - A[0] * y_cam_1
+    print(A)
+    print(B)
+    state = 4 # supuestamente calibrado
+    #fd.write( line )
 
  key = cv.waitKey(30)
 
