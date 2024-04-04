@@ -77,14 +77,15 @@ def color_detect(img,color_name):
             x,y,w,h = cv2.boundingRect(i)      # Decompose the contour into the coordinates of the upper left corner and the width and height of the recognition object
 
             # Draw a rectangle on the image (picture, upper left corner coordinate, lower right corner coordinate, color, line width)
-            if w >= 8 and h >= 8: # Because the picture is reduced to a quarter of the original size, if you want to draw a rectangle on the original picture to circle the target, you have to multiply x, y, w, h by 4.
-                x = x * 4
-                y = y * 4 
-                w = w * 4
-                h = h * 4
-                cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)  # Draw a rectangular frame
-                cv2.putText(img,color_type,(x,y), cv2.FONT_HERSHEY_SIMPLEX, 1,(0,0,255),2)# Add character description
-
+#            if w >= 8 and h >= 8: # Because the picture is reduced to a quarter of the original size, if you want to draw a rectangle on the original picture to circle the target, you have to multiply x, y, w, h by 4.
+            y = y * 4 
+            x = x * 4
+            w = w * 4
+            h = h * 4
+            cv2.rectangle(img,(x,y),(x+w,y+h),(0,255,0),2)  # Draw a rectangular frame
+            cv2.putText(img,color_type,(x,y), cv2.FONT_HERSHEY_SIMPLEX, 1,(0,0,255),1)# Add character description
+            cv2.putText(img,str(w) + "x" + str(h),(x,y+20), cv2.FONT_HERSHEY_SIMPLEX, 1,(110,0,255),1)# Add character description
+            
     return img,mask,morphologyEx_img
 
 with PiCamera() as camera:
@@ -96,7 +97,9 @@ with PiCamera() as camera:
 
     for frame in camera.capture_continuous(rawCapture, format="bgr",use_video_port=True):# use_video_port=True
         img = frame.array
-        img,img_2,img_3 =  color_detect(img,'red')  # Color detection function
+#color_dict = {'red':[0,4],'orange':[5,18],'yellow':[22,37],'green':[42,85],'blue':[92,110],'purple':[115,165],'red_2':[165,180]}  #Here is the range of H in the HSV color space represented by the color
+
+        img,img_2,img_3 =  color_detect(img,'purple')  # Color detection function
         cv2.imshow("video", img)    # OpenCV image show
         cv2.imshow("mask", img_2)    # OpenCV image show
         cv2.imshow("morphologyEx_img", img_3)    # OpenCV image show
