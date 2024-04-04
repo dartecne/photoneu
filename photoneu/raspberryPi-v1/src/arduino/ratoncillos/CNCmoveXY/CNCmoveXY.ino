@@ -65,7 +65,7 @@ void setup() {
 //  microsBtwnSteps = minMicrosBtwnSteps;
   microsBtwnSteps = maxMicrosBtwnSteps;
 // 	Serial.println("CNC Shield Initialized OK");
-//  calibrate();
+  calibrate();
   setPoint( xMax/2, yMax/2 );
   stop = false;
   lastSend = millis();
@@ -82,39 +82,32 @@ void loop() {
    singleStep( stepZPin );
   }
 //  if( xSP == xPos & ySP == yPos ) Serial.println( "DONE!" );;
-  delayMicroseconds(microsBtwnSteps);  
-  if(readSerialData() > 0) setPoint(xSP, ySP);
-  else if( millis() - lastSend > tau) {
-    sendSerialData();
-    lastSend = millis();
+  if(readSerialData() > 0) {
+    setPoint(xSP, ySP);
   }
+  delayMicroseconds(microsBtwnSteps);  
 //  delay(60);
 }
 
 int readSerialData() {
   if(!Serial.available()) return 0; // espera datos
   String str = "X1234Y1234";
-//  str = Serial.readString();
   str = Serial.readStringUntil('\0');
   str.trim();
-//  Serial.print("Serial Received: ");Serial.println(str);
- // Serial.print("length: "); Serial.println(str.length());
-//  if(str.length() != 10 ) return;
- // printStr(str);
-//  Serial.println(  "Getting values..." );
-  if(str[0] == 'X') xSP = string2number( str, 1, 5 );
-//  Serial.println( xSP );
-  if(str[6] == 'Y') ySP = string2number( str, 7, 5 );
+  if( str[0] == 'P' ) sendMotorPosition();
+  else if( str[0] == 'C' ) {
+    calibrate();
+    setPoint( xMax/2, yMax/2 );
+  } else if(str[0] == 'X') {
+    xSP = string2number( str, 1, 5 );
+//      if(str[6] == 'Y') ySP = string2number( str, 7, 5 );
+    ySP = string2number( str, 7, 5 );
+  }
   return str.length();
 }
 
-int sendSerialData() {
+int sendMotorPosition() {
   String msg = String(millis());
-  /*msg = "X";
-  msg += (String) 123456;
-  msg += "Y"; 
-  msg += "098765";
-*/  
   msg += ',';
   msg += xPos;
   msg += ',';

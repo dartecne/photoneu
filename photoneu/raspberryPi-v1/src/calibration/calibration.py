@@ -17,6 +17,8 @@ port = '/dev/ttyACM0'
 baudrate = 115200
 filename = "data.dat"
 move_flag = True
+A = (1.1, 1.1) #coeficientes de calibración
+B = (1.1, 1.1)
 
 def on_low_V_thresh_trackbar(val):
  global low_V
@@ -67,7 +69,7 @@ def findHoughCircles(gray):
             cv.putText(frame,str(radius),center, cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)# Add character description
  return circles           
 
-def findContours(frame):
+def findContours(frame, frame_threshold):
  x = -1
  y = -1
     # Find the contour in morphologyEx_img, and the contours are arranged according to the area from small to large.
@@ -103,6 +105,8 @@ def sendCode( msg ) :
 #        print ("<<<" + ser.readline().decode() )
                 
 def getMotorPosition():   
+    msg = "P\0"
+    ser.write( msg.encode(encoding= 'ascii') )
     line = ser.readline().decode('utf-8').rstrip()
     print("<<< reading... ")
     print(line)
@@ -111,8 +115,21 @@ def getMotorPosition():
     if len(line.split(",")) == 3:
         timestamp, x_head, y_head = line.split(",")
     return timestamp,x_head,y_head
-        
+
+def sendCalibrate() :
+    msg = "C\0"
+    ser.write( msg.encode(encoding= 'ascii') )    
+
+def pixels2steps( point ) :   
+   motor_point[0] = A[0] * point[0] + B[0]
+   motor_point = (0, 0)
+   motor_point[0] = A[0] * point[0] + B[0]
+   motor_point[1] = A[1] * point[1] + B[1]
+
+   return motor_point
+
 ######## main ##########
+
 parser = argparse.ArgumentParser(description='Code for Thresholding Operations using inRange tutorial.')
 parser.add_argument('--camera', help='Camera divide number.', default=0, type=int)
 args = parser.parse_args()
@@ -121,7 +138,15 @@ cv.namedWindow(window_capture_name)
 cv.namedWindow(window_detection_name)
 
 initSystem()    
-while True: 
+#sendCalibrate() 
+
+######## loop  ##########
+#enviar el cabezal al (0,0) y luego al centro
+# buscar circulo rojo (cabezal) y guardar la posicion x0, y0
+# mover el cabezal en x e y, y guardar la posición x1, y1
+# obtener los coeficientes A, B
+
+while True:
  ret, frame = cap.read()
  if frame is None:
      print( "No frame. Exit...")
@@ -143,23 +168,13 @@ while True:
  cv.imshow(window_detection_name, frame_threshold)
  cv.imshow(window_capture_name, frame)
  line = ""
- #@TODO Esta lectura del puerto serie genera mucha latencia 
- # Implementar mediante una escritura/petición de datos 
- t, x_head, y_head = getMotorPosition()
- if move_flag:
-    x_head += 1000 
-    y_head += 1000 
-    msg = "X" + str(int(x_head)).zfill(5) + "Y" + str(int(y_head)).zfill(5) 
-    sendCode(msg)
-    move_flag = False
-    
- t, x_head, y_head = getMotorPosition()
- x_cam, y_cam =  findContours(frame_threshold)
- line = str(t) + \
-     "," + str(x_head) + "," + str(y_head) + \
-     "," + str(x_cam) + "," + str(y_cam)
- print(line)    
- fd.write( line )
+# t, x_head, y_head = getMotorPosition()    
+ x_cam, y_cam =  findContours(frame, frame_threshold)
+ #line = str(t) + \
+ #    "," + str(x_head) + "," + str(y_head) + \
+ #    "," + str(x_cam) + "," + str(y_cam)
+ #print(line)    
+ #fd.write( line )
 
  key = cv.waitKey(30)
 

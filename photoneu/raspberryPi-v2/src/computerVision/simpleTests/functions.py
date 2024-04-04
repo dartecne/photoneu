@@ -1,3 +1,6 @@
+#
+# archivo que se importa desde detect_mices.py
+#
 import cv2
 import numpy as np
 import time
