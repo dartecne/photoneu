@@ -35,12 +35,11 @@ int yMax = 24272;  // resolucion de 1/16
 int xMax = 19430;  // 19431 con una resolucion de 1/16
 int xSP = 0, ySP = 0; // Set Point, donde debe ir el cabezal
 bool stop = true;
-int tau = 500; // time between writes ms
-long lastSend = 0;
+unsigned long tau = 0;
 
 void setup() {
- 	Serial.begin(115200);
-// 	Serial.begin( 9600 );
+// 	Serial.begin(115200);
+   Serial.begin(230400); // no hay mucha diferencia
 //  while( !Serial );
  	pinMode(enPin, OUTPUT);
  	digitalWrite(enPin, LOW);
@@ -68,7 +67,7 @@ void setup() {
   calibrate();
   setPoint( xMax/2, yMax/2 );
   stop = false;
-  lastSend = millis();
+  prevStepMicros = millis();
 }
 
 void loop() {
@@ -82,10 +81,12 @@ void loop() {
    singleStep( stepZPin );
   }
 //  if( xSP == xPos & ySP == yPos ) Serial.println( "DONE!" );;
-  if(readSerialData() > 0) {
-    setPoint(xSP, ySP);
-  }
-  delayMicroseconds(microsBtwnSteps);  
+  readSerialData();
+  tau = curMicros - prevStepMicros;
+  if(tau < microsBtwnSteps) {
+    prevStepMicros = curMicros;
+    delayMicroseconds( microsBtwnSteps ); 
+  } 
 //  delay(60);
 }
 
@@ -102,8 +103,9 @@ int readSerialData() {
     xSP = string2number( str, 1, 5 );
 //      if(str[6] == 'Y') ySP = string2number( str, 7, 5 );
     ySP = string2number( str, 7, 5 );
-  }
-//  } else if( str[0] == 'Q' ) send
+    setPoint(xSP, ySP);
+  } else if( str[0] == 'Q' ) sendError();
+  
   return str.length();
 }
 
@@ -113,6 +115,16 @@ int sendMotorPosition() {
   msg += xPos;
   msg += ',';
   msg += yPos;
+  Serial.println(msg);
+  return msg.length();
+}
+
+int sendError() {
+  String msg = String(millis());
+  msg += ',';
+  msg += xPos - xSP;
+  msg += ',';
+  msg += yPos - ySP;
   Serial.println(msg);
   return msg.length();
 }
@@ -172,8 +184,8 @@ void setPoint( unsigned int x, unsigned int y ) {
   xSP = x;
   ySP = y;
   stop = false;
-  Serial.print( "Going to xSP: " ); Serial.print(xSP); 
-  Serial.print(" ySP: "); Serial.println( ySP );
+//  Serial.print( "Going to xSP: " ); Serial.print(xSP); 
+//  Serial.print(" ySP: "); Serial.println( ySP );
 }
 
 void setDirection( bool xD, bool yD ) {
