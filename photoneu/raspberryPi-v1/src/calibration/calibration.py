@@ -18,8 +18,8 @@ port = '/dev/ttyACM0'
 baudrate = 230400
 filename = "data.dat"
 state = 0 # 0 - stop, 1- moving, 
-A = (1.1, 1.1) #coeficientes de calibración
-B = (1.1, 1.1)
+A = [1.1, 1.1] #coeficientes de calibración
+B = [1.1, 1.1]
 
 def on_low_V_thresh_trackbar(val):
  global low_V
@@ -114,25 +114,40 @@ def getMotorPosition():
     msg = "P\0"
     ser.write( msg.encode(encoding= 'ascii') )
     line = ser.readline().decode('utf-8').rstrip()
-    print("<<< reading... ")
-    print(line)
+#    print("<<< reading... ")
+#    print(line)
 #    print(len(line.split(",")))
-    timestamp, x_head, y_head = 0,0,0
+    timestamp, x_head, y_head = -1,-1,-1
     if len(line.split(",")) == 3:
         timestamp, x_head, y_head = line.split(",")
+    if(timestamp == -1 ): 
+        print("ERROR motor position")
+        print("<<< reading... ")
+        print(line)
     return int(timestamp), int(x_head), int(y_head)
 
 def sendCalibrate() :
     msg = "C\0"
     ser.write( msg.encode(encoding= 'ascii') )    
 
-def checkSP() :
-    msg = "Q\0"
+def getSPerror() :
+    msg = "E\0"
     ser.write( msg.encode(encoding= 'ascii') )    
+    line = ser.readline().decode('utf-8').rstrip()
+#    print("<<< reading... ")
+#    print(line)
+#    print(len(line.split(",")))
+    timestamp, x_head_error, y_head_error = -1,-1,-1
+    if len(line.split(",")) == 3:
+        timestamp, x_head_error, y_head_error = line.split(",")
+    if(timestamp == -1 ): 
+        print("ERROR lectura SPerror")
+        print("<<< reading... ")
+        print(line)
+    return int(timestamp), int(x_head_error), int(y_head_error)
 
-def pixels2steps( point ) :   
-   motor_point[0] = A[0] * point[0] + B[0]
-   motor_point = (0, 0)
+def pixels2steps( point ) :  
+   motor_point = [-1.0,-1.0] 
    motor_point[0] = A[0] * point[0] + B[0]
    motor_point[1] = A[1] * point[1] + B[1]
 
@@ -149,7 +164,7 @@ cv.namedWindow(window_detection_name)
 
 initSystem()    
 sendCalibrate() 
-#time.sleep(7)
+time.sleep(12)
 #t, x_head, y_head = getMotorPosition()
 x_head_0, y_head_0 = 0, 0
 x_head_1, y_head_1 = 0, 0
@@ -188,30 +203,47 @@ while True:
 
  if state == 0: # sin tomar la posicion 0
      t, x_head, y_head = getMotorPosition()
-     x_cam_0 = x_cam
-     y_cam_0 = y_cam
-     x_head_0 = x_head
-     y_head_0 = y_head
      line = str(t) + \
-         "," + str(x_head_0) + "," + str(y_head_0) + \
-         "," + str(x_cam_0) + "," + str(y_cam_0)
-     print( "head_0, cam_0 = " + line )
+         "," + str(x_head) + "," + str(y_head) + \
+         "," + str(x_cam) + "," + str(y_cam)
+     print( "head, cam = " + line )
+     t, x_head_error, y_head_error = getSPerror()
+     print( "head_error = " + str(t) + "," + str(x_head_error) + "," + str(y_head_error) )
 
-     if x_cam_0 != 0 & y_cam_0 != 0:
-        moveHead( x_head - 600, y_head - 600 )
-        state = 1
+#     if (x_cam_0 != 0) & (y_cam_0 != 0) &\
+#        (x_head_0 != 0) & (y_head_0 != 0):
+     if (x_head_error == 0) & (y_head_error == 0) :
+            print("Got point 0")
+            x_cam_0 = x_cam
+            y_cam_0 = y_cam
+            x_head_0 = x_head
+            y_head_0 = y_head
+            print( "head_0, cam_0 = " + str(x_head_0) + "," + str(y_head_0) + "," + str(x_cam_0) + "," + str(y_cam_0) )
+            moveHead( x_head + 10000, y_head + 10000 )
+#            moveHead( 0, 0 )
+            state = 1
 
  if state == 1:
-    if x_head == (x_head_0 + 1000) & y_head == (y_head_0 + 1000): # ya ha llegado
-        x_cam_1 = x_cam
-        y_cam_1 = y_cam
-        x_head_1 = x_head
-        y_head_1 = y_head
-        print( "head_1, cam_1 = " + line )
-        state = 2 
+    t, x_head_error, y_head_error = getSPerror()
+    print( "head_error = " + str(t) + "," + str(x_head_error) + "," + str(y_head_error) )
+    if (t != -1) & (x_head_error == 0) & (y_head_error == 0): # ya ha llegado
+        print("Got SP")
+        t, x, y = getMotorPosition()
+        if t != -1:
+            if( x_cam != 0 ) & ( y_cam != 0 ):
+                x_cam_1 = x_cam
+                y_cam_1 = y_cam
+                x_head_1 = x
+                y_head_1 = y
+                print( "head_1, cam_1 = " + str(t) + "," + str(x_head_1) + "," + str(y_head_1) + "," + str(x_cam_1) + "," + str(y_cam_1) )
+                state = 2 
 
  if state == 2:
-#    head = A cam + B        
+#    head = A cam + B
+    print("callibrating with:")
+    print( "head_0, cam_0 = " + str(x_head_0) + "," + str(y_head_0) + "," + str(x_cam_0) + "," + str(y_cam_0) )
+    print( "head_1, cam_1 = " + str(x_head_1) + "," + str(y_head_1) + "," + str(x_cam_1) + "," + str(y_cam_1) )
+    #ERROR en el calculo de coeficintes
     A[0] = ( x_head_0 - x_head_1 ) / ( x_cam_0 - x_cam_1 )
     B[0] = x_head_1 - A[0] * x_cam_1
     A[1] = ( y_head_0 - y_head_1 ) / ( y_cam_0 - y_cam_1 )
@@ -221,6 +253,13 @@ while True:
     print(B)
     state = 3 # supuestamente calibrado
     #fd.write( line )
+
+ if state == 3:
+  head_point = pixels2steps([300,200])
+  print("moving to pixels")
+  print(head_point)
+  moveHead(head_point[0], head_point[1])
+  state = 4
 
  key = cv.waitKey(30)
 
