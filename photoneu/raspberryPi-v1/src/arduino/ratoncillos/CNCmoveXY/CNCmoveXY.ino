@@ -21,21 +21,22 @@ const int limitZPin = 11;
 
 const int stepsPerRev=200;
 unsigned long pulseWidthMicros = 10; 	// microseconds
-unsigned long microsBtwnSteps = 100; // milliseconds
+unsigned long microsBtwnSteps = 100; 
 unsigned long maxMicrosBtwnSteps= 200;
 unsigned long minMicrosBtwnSteps= 20;
 
-unsigned long curMicros;
-unsigned long prevStepMicros = 0;
+long curMicros;
+long prevStepMicros = 0;
 
-int xPos = 0, yPos = 0;
 //int yMax = 1540;  // valores aproximados obtenidos después de la calibración
 int yMax = 24272;  // resolucion de 1/16
 //int xMax = 1250;  
 int xMax = 19430;  // 19431 con una resolucion de 1/16
-int xSP = 0, ySP = 0; // Set Point, donde debe ir el cabezal
+int xPos = xMax/2, yPos = yMax/2;
+int xSP = xMax/2, ySP = yMax/2; // Set Point, donde debe ir el cabezal
 bool stop = true;
-unsigned long tau = 0;
+bool calibrated = false;
+long tau = 0;
 
 void setup() {
 // 	Serial.begin(115200);
@@ -67,35 +68,36 @@ void setup() {
   calibrate();
   setPoint( xMax/2, yMax/2 );
   stop = false;
-  prevStepMicros = millis();
+  prevStepMicros = micros();
 }
 
 void loop() {
   curMicros = micros();
   while( stop ) checkLimits();
-  if(xSP - xPos > 0 ) setXdirection(HIGH); else setXdirection(LOW);
-  if(ySP - yPos > 0 ) setYdirection(HIGH); else setYdirection(LOW);
+  if(xSP - xPos > 0 ) setXdirection(LOW); else setXdirection(HIGH);
+  if(ySP - yPos > 0 ) setYdirection(LOW); else setYdirection(HIGH);
   if( xSP != xPos ) singleStep( stepXPin );
   if( ySP != yPos ) {
    singleStep( stepYPin );
    singleStep( stepZPin );
   }
-//  if( xSP == xPos & ySP == yPos ) Serial.println( "DONE!" );;
   readSerialData();
   tau = curMicros - prevStepMicros;
   if(tau < microsBtwnSteps) {
-    prevStepMicros = curMicros;
     delayMicroseconds( microsBtwnSteps ); 
   } 
+    prevStepMicros = curMicros;
 //  delay(60);
 }
 
 int readSerialData() {
   if(!Serial.available()) return 0; // espera datos
-  String str = "X1234Y1234";
+  String str = "X12345Y12345";
   str = Serial.readStringUntil('\0');
   str.trim();
   if( str[0] == 'P' ) sendMotorPosition();
+  else if( str[0] == 'E' ) sendSPerror();
+  else if( str[0] == 'Q' ) sendCalibrated();
   else if( str[0] == 'C' ) {
     calibrate();
     setPoint( xMax/2, yMax/2 );
@@ -104,8 +106,7 @@ int readSerialData() {
 //      if(str[6] == 'Y') ySP = string2number( str, 7, 5 );
     ySP = string2number( str, 7, 5 );
     setPoint(xSP, ySP);
-  } else if( str[0] == 'Q' ) sendError();
-  
+  }
   return str.length();
 }
 
@@ -119,7 +120,7 @@ int sendMotorPosition() {
   return msg.length();
 }
 
-int sendError() {
+int sendSPerror() {
   String msg = String(millis());
   msg += ',';
   msg += xPos - xSP;
@@ -127,6 +128,15 @@ int sendError() {
   msg += yPos - ySP;
   Serial.println(msg);
   return msg.length();
+}
+
+int sendCalibrated() {
+  String msg = String(millis());
+  msg += ',';
+  msg += calibrated;
+  Serial.println(msg);
+  return msg.length();
+  
 }
 
 void printStr( String str ) {
@@ -149,7 +159,7 @@ int string2number(String str, int init, int num) {
 * Busca el (0,0)
 */
 void calibrate() {
-  Serial.println("Calibrating...");
+//  Serial.println("Calibrating...");
   setYdirection(HIGH);
   while( digitalRead(limitYPin) ) {
     singleStep( stepYPin );
@@ -162,9 +172,9 @@ void calibrate() {
     singleStep( stepZPin );
     delayMicroseconds(microsBtwnSteps);
   }
-  Serial.println("Y calibrated!");
-  Serial.print("Y steps: ");Serial.println( yPos );
-  yPos = yMax;
+//  Serial.println("Y calibrated!");
+//  Serial.print("Y steps: ");Serial.println( yPos );
+  yPos = 0;
   setXdirection(HIGH);
   while( digitalRead(limitXPin) ) {
     singleStep( stepXPin );
@@ -175,9 +185,10 @@ void calibrate() {
     singleStep( stepXPin );
     delayMicroseconds(microsBtwnSteps);
   }
-  Serial.println("X calibrated!");
-  Serial.print("X steps: ");Serial.println( xPos );
-  xPos = xMax;
+//  Serial.print("X steps: ");Serial.println( xPos );
+//  Serial.println("ACK");
+  xPos = 0;
+  calibrated = true;
 }
 
 void setPoint( unsigned int x, unsigned int y ) {
@@ -211,10 +222,10 @@ void singleStep( int sPin) {
   delayMicroseconds(pulseWidthMicros);
   digitalWrite(sPin, LOW);
   if(sPin == stepXPin) {
-    if(xDir) xPos++; else xPos--;
+    if(xDir) xPos--; else xPos++;
   }
   else if(sPin == stepYPin) {
-    if(yDir) yPos++; else yPos--;
+    if(yDir) yPos--; else yPos++;
   }
   if(xPos < 0 ) xPos = 0;
   if(yPos < 0 ) yPos = 0;
