@@ -148,8 +148,8 @@ def getSPerror() :
 
 def pixels2steps( point ) :  
    motor_point = [-1.0,-1.0] 
-   motor_point[0] = A[0] * point[0] + B[0]
-   motor_point[1] = A[1] * point[1] + B[1]
+   motor_point[0] = int(A[0] * point[0] + B[0])
+   motor_point[1] = int(A[1] * point[1] + B[1])
 
    return motor_point
 
@@ -164,7 +164,7 @@ cv.namedWindow(window_detection_name)
 
 initSystem()    
 sendCalibrate() 
-time.sleep(12)
+time.sleep(8)
 #t, x_head, y_head = getMotorPosition()
 x_head_0, y_head_0 = 0, 0
 x_head_1, y_head_1 = 0, 0
@@ -181,7 +181,7 @@ while True:
  ret, frame = cap.read()
  if frame is None:
      print( "No frame. Exit..." )
-     break
+#     break
  frame = cv.blur(frame, (5,5))
  gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
  rows = gray.shape[0]
@@ -245,23 +245,26 @@ while True:
     print( "head_1, cam_1 = " + str(x_head_1) + "," + str(y_head_1) + "," + str(x_cam_1) + "," + str(y_cam_1) )
     #ERROR en el calculo de coeficintes
     A[0] = ( x_head_0 - x_head_1 ) / ( x_cam_0 - x_cam_1 )
-    B[0] = x_head_1 - A[0] * x_cam_1
+    B[0] = x_head_0 - A[0] * x_cam_0
     A[1] = ( y_head_0 - y_head_1 ) / ( y_cam_0 - y_cam_1 )
-    B[1] = y_head_1 - A[0] * y_cam_1
+    B[1] = y_head_0 - A[0] * y_cam_0
     print("calibración OK")
     print(A)
     print(B)
     state = 3 # supuestamente calibrado
+    time.sleep(3) 
     #fd.write( line )
 
  if state == 3:
-  head_point = pixels2steps([300,200])
-  print("moving to pixels")
-  print(head_point)
-  moveHead(head_point[0], head_point[1])
-  state = 4
+    x_cam_sp = 300
+    y_cam_sp = 200
+    head_point = pixels2steps([x_cam_sp, y_cam_sp])
+    print("moving to pixels: " + str(x_cam_sp) + "," + str(y_cam_sp))
+    print( head_point )
+    moveHead( head_point[0], head_point[1] )
+    state = 4
 
- key = cv.waitKey(30)
+ key = cv.waitKey( 30 )
 
  if key == ord('q') or key == 27:
      break
