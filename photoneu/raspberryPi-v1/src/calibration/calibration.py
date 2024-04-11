@@ -247,7 +247,7 @@ while True:
     A[0] = ( x_head_0 - x_head_1 ) / ( x_cam_0 - x_cam_1 )
     B[0] = x_head_0 - A[0] * x_cam_0
     A[1] = ( y_head_0 - y_head_1 ) / ( y_cam_0 - y_cam_1 )
-    B[1] = y_head_0 - A[0] * y_cam_0
+    B[1] = y_head_0 - A[1] * y_cam_0
     print("calibración OK")
     print(A)
     print(B)
