@@ -1,7 +1,5 @@
 from __future__ import print_function
-import argparse
 import numpy as np
-import time
 import serial
 
 class MotorHandler:
@@ -63,3 +61,11 @@ class MotorHandler:
             print("<<< reading... ")
             print(line)
         return int(timestamp), int(x_head_error), int(y_head_error)
+
+    def printValues( self, t, x_head, y_head ):
+#        t, x_head, y_head = self.getMotorPosition()
+        line = str(t) + \
+            "," + str(x_head) + "," + str(y_head)
+        print( "head, cam = " + line )
+        t, x_head_error, y_head_error = self.getSPerror()
+        print( "head_error = " + str(t) + "," + str(x_head_error) + "," + str(y_head_error) )
