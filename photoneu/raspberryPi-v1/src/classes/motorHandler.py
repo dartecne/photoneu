@@ -66,6 +66,6 @@ class MotorHandler:
 #        t, x_head, y_head = self.getMotorPosition()
         line = str(t) + \
             "," + str(x_head) + "," + str(y_head)
-        print( "head, cam = " + line )
+        print( "head, = " + line )
         t, x_head_error, y_head_error = self.getSPerror()
         print( "head_error = " + str(t) + "," + str(x_head_error) + "," + str(y_head_error) )

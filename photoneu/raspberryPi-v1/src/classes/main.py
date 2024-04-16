@@ -9,4 +9,9 @@ import sys
 from controller import Controller
 
 controller = Controller()
+time.sleep(7)
+print("main- callibrating...")
 controller.callibrate()
+time.sleep(1)
+print("main- test callibration...")
+controller.testCallibration()

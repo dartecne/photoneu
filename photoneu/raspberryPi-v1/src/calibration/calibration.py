@@ -219,7 +219,7 @@ while True:
             x_head_0 = x_head
             y_head_0 = y_head
             print( "head_0, cam_0 = " + str(x_head_0) + "," + str(y_head_0) + "," + str(x_cam_0) + "," + str(y_cam_0) )
-            moveHead( x_head + 10000, y_head + 10000 )
+            moveHead( x_head + 3000, y_head + 3000 )
 #            moveHead( 0, 0 )
             state = 1
 
@@ -243,7 +243,6 @@ while True:
     print("callibrating with:")
     print( "head_0, cam_0 = " + str(x_head_0) + "," + str(y_head_0) + "," + str(x_cam_0) + "," + str(y_cam_0) )
     print( "head_1, cam_1 = " + str(x_head_1) + "," + str(y_head_1) + "," + str(x_cam_1) + "," + str(y_cam_1) )
-    #ERROR en el calculo de coeficintes
     A[0] = ( x_head_0 - x_head_1 ) / ( x_cam_0 - x_cam_1 )
     B[0] = x_head_0 - A[0] * x_cam_0
     A[1] = ( y_head_0 - y_head_1 ) / ( y_cam_0 - y_cam_1 )
