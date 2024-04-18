@@ -1,5 +1,7 @@
 import time
 import numpy as np
+import cv2 as cv
+
 from camHandler import CamHandler
 from motorHandler import MotorHandler
 
@@ -16,28 +18,36 @@ class Controller:
 
     def callibrate(self):
         # punto 0
+        print("Getting point 0")
         x_cam, y_cam = self.waitSP()
+        print("Got SP")
+        time.sleep(1)
         t, x, y = self.motor.getMotorPosition()
+        #BUG: no append porque es el primer dato!!
         self.p = np.append(self.p, [[x_cam,y_cam,x,y]], axis=0)
+        print("reference points:")
         print(self.p)
         time.sleep(1)
-        self.motor.moveHead( x + 2000, y + 2000 )
+        self.motor.moveHead( x + 1000, y + 1000 )
 
         # punto 1
+        print("Getting point 1")
         x_cam, y_cam = self.waitSP()
         print("Got SP")
         time.sleep(1)
         t, x, y = self.motor.getMotorPosition()
         self.p = np.append(self.p, [[x_cam,y_cam,x,y]], axis=0)
+        print("reference points:")
         print(self.p)
 
+        print("Calculating coefficents:")
         self.calculateCoefficents()
 
     def testCallibration( self ):
         if self.callibrated == False:
             return -1
         x_cam_sp = 300
-        y_cam_sp = 200
+        y_cam_sp = 240
         head_point = self.pixels2steps([x_cam_sp, y_cam_sp])
         print("moving to pixels: " + str(x_cam_sp) + "," + str(y_cam_sp))
         print( head_point )
@@ -54,19 +64,24 @@ class Controller:
         frame, hsv, gray, frame_threshold = self.cam.getImage()
         #circles = cam.findHoughCircles(frame, gray)
         n, x_cam, y_cam = self.cam.findContours(frame, frame_threshold)
+        self.cam.printValues(x_cam, y_cam)
         while True:
             frame, hsv, gray, frame_threshold = self.cam.getImage()
             #circles = cam.findHoughCircles(frame, gray)
             n, x_cam, y_cam = self.cam.findContours(frame, frame_threshold)
-            self.cam.printValues(x_cam, y_cam)
+#            self.cam.printValues(x_cam, y_cam)
             self.cam.showImage(frame, frame_threshold)
             t, x_head_error, y_head_error = self.motor.getSPerror()
-            self.motor.printValues(t, x_head_error, y_head_error)
-            self.cam.printValues(x_cam, y_cam)
+#            self.motor.printValues(t, x_head_error, y_head_error)
+#            self.cam.printValues(x_cam, y_cam)
+            print("n_circles = " + str(n))
             if (t!=-1) & \
                 (x_head_error == 0) & \
                     (y_head_error == 0) & \
-                        ( n < 1 ):
+                        ( n == 1 ):
+                break
+            key = cv.waitKey( 30 )
+            if key == ord('q') or key == 27:
                 break
         return x_cam, y_cam
 

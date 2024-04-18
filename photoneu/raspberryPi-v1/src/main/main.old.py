@@ -60,12 +60,6 @@ def on_low_V_thresh_trackbar(val):
  low_V = min(high_V-1, low_V)
  cv.setTrackbarPos(low_V_name, window_detection_name, low_V)
 
-def on_high_V_thresh_trackbar(val):
- global low_V
- global high_V
- high_V = val
- high_V = max(high_V, low_V+1)
- cv.setTrackbarPos(high_V_name, window_detection_name, high_V)
  
 def sendCodeTest( msg ) :
     print(">>> writing... ")

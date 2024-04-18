@@ -3,14 +3,27 @@ import numpy as np
 import cv2 as cv
 
 
+
+
 class CamHandler:
     def __init__(self):
         self.window_capture_name = 'Video Capture'
         self.window_detection_name = 'Object Detection'
+        self.low_V_name = 'Low V'
+        self.high_V_name = 'High V'
+        self.max_value = 255
+        self.low_V = 0
+        self.high_V = 20 # maximo valor bajo el cual se considera color negro
 
-        self.cap = cv.VideoCapture(0)
-        cv.namedWindow(self.window_capture_name)
-        cv.namedWindow(self.window_detection_name)
+
+        self.cap = cv.VideoCapture( 0 )
+        cv.namedWindow( self.window_capture_name )
+        cv.namedWindow( self.window_detection_name )
+        cv.createTrackbar( self.low_V_name, self.window_detection_name , \
+                          self.low_V, self.max_value, self.on_low_V_thresh_trackbar )
+        cv.createTrackbar( self.high_V_name, self.window_detection_name , \
+                          self.high_V, self.max_value, self.on_high_V_thresh_trackbar )
+
 
     def getImage( self ):
         ret, frame = self.cap.read()
@@ -20,19 +33,19 @@ class CamHandler:
         frame = cv.blur(frame, (5,5))
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 #        rows = gray.shape[0]
-        hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)              # Convert from BGR to HSV
+        hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)     # Convert from BGR to HSV
         kernel = np.ones((6,6),np.uint8) 
         # filtro del rojo
-        mask = cv.inRange( hsv,np.array([0, 60, 60]), np.array([14, 255, 255]) ) # red HSV: 0,4
-        mask_2 = cv.inRange(hsv, (160,0,0), (180,255,255)) 
-        mask = cv.bitwise_or(mask, mask_2)
-        frame_threshold = cv.morphologyEx( mask, cv.MORPH_OPEN, kernel,iterations = 1 )              # Perform an open operation on the image 
+        mask = cv.inRange( hsv,(160, 60, 60), (180, 255, 255) ) 
+        mask_2 = cv.inRange( hsv, (0, 90, 50), (18, 255, 255) ) # red HSV: 0,18
+        mask = cv.bitwise_or( mask, mask_2 )
+#        mask = cv.inRange( mask, self.low_V, self.high_V )
+        frame_threshold = cv.morphologyEx( mask, cv.MORPH_OPEN, kernel,iterations = 2 )              # Perform an open operation on the image 
         return frame, hsv, gray, frame_threshold
     
     def showImage(self, frame, frame_threshold):
         cv.imshow( self.window_detection_name, frame_threshold )
         cv.imshow( self.window_capture_name, frame )
-    
 
     def findHoughCircles(self, frame, gray):
         circles = cv.HoughCircles(gray, cv.HOUGH_GRADIENT, 1, 40,
@@ -80,5 +93,15 @@ class CamHandler:
 
     def printValues( self, x, y ):
 #        n, x, y = self.findContours()
-        line = str(x) + "," + str(y)
+        line = str( x ) + "," + str( y )
         print( "cam = " + line )
+
+    def on_high_V_thresh_trackbar( self, val ):
+        self.high_V = val
+        self.high_V = max( self.high_V, self.low_V+1 )
+        cv.setTrackbarPos( self.high_V_name, self.window_detection_name, self.high_V )
+
+    def on_low_V_thresh_trackbar(self, val):
+        self.low_V = val
+        self.low_V = min( self.high_V-1, self.low_V )
+        cv.setTrackbarPos( self.low_V_name, self.window_detection_name, self.low_V )

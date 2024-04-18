@@ -1,6 +1,4 @@
 from __future__ import print_function
-import argparse
-import time
 import cv2 as cv
 
 from camHandler import CamHandler
