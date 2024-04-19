@@ -145,11 +145,7 @@ def controlLoop():
  if key == ord('q') or key == 27:
      endSystem()
  
-#### main ####
-max_value = 255
-low_V = 0
-high_V = 20 # maximo valor bajo el cual se considera color negro
-minMicePixelArea = 140 * 70 # min size in pixels of a mouse
+#### main ####minMicePixelArea = 140 * 70 # min size in pixels of a mouse
 maxMicePixelArea = 130 * 140 # max size in pixels of a mouse
 
 window_capture_name = 'Video Capture'
