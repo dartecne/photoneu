@@ -13,6 +13,8 @@ class Controller:
     def __init__(self):
         self.cam = CamHandler()
         self.motor = MotorHandler()
+        time.sleep(9)
+        self.n = -1
         self.x_cam = -1
         self.y_cam = -1
         self.p = np.zeros((2,4))    
@@ -21,15 +23,15 @@ class Controller:
         self.B = [1.1, 1.1]
         self.r = [1.1, 1.1] #coeff de correlacion 
         self.cam_thread = threading.Thread( target = self.cam_thread, args=(1,) )
-        self.motor_thread = threading.Thread( target = self.motor_thread, args=(1,) )
+#        self.motor_thread = threading.Thread( target = self.motor_thread, args=(1,) )
         self.cam_thread.start()
-        self.motor_thread.start()
+#       self.motor_thread.start()
     
     def cam_thread( self, name ):
         while True:
             frame, hsv, gray, frame_threshold = self.cam.getImage()
             #circles = cam.findHoughCircles(frame, gray)
-            n, self.x_cam, self.y_cam = self.cam.findContours(frame, frame_threshold)
+            self.n, self.x_cam, self.y_cam = self.cam.findContours(frame, frame_threshold)
             self.cam.showImage(frame, frame_threshold)
 
             key = cv.waitKey( 30 )
@@ -49,13 +51,14 @@ class Controller:
 
 
     def callibrate(self):
-        i = 0
-        while True:
+        p_head = [[19000, 5000], [19000, 20000],[2000, 20000],\
+                  [2000, 5000],[9700, 12000]]
+        for i in range( len(p_head) ):
             t, x, y = self.getPoint(i)
+#            dx = random.randrange(-2000,2000,1)
+#            dy = random.randrange(-2000,2000,1)
+            self.motor.moveHead( p_head[i][0], p_head[i][1] )
             time.sleep(2)
-            dx = random.randrange(-2000,2000,1)
-            dy = random.randrange(-2000,2000,1)
-            self.motor.moveHead( x + dx, y + dy )
             i = i + 1
             if i > 2: 
                 self.linearRegression()
@@ -65,6 +68,12 @@ class Controller:
         self.waitSP()
         print( "Got SP" )
         t, x, y = self.motor.getMotorPosition()
+#        while True:
+#            if( self.n == 1) & \
+#            (self.x_cam != -1 ) &\
+#            (self.y_cam != -1):
+#                break
+        time.sleep(1.5) #compensacion del retardo de la camara
         if i < 2:
             self.p[i] = [self.x_cam,self.y_cam,x,y]
         else:
@@ -80,15 +89,13 @@ class Controller:
         print("moving to pixels: " + str(x_cam_sp) + "," + str(y_cam_sp))
         print( head_point )
         self.motor.moveHead( head_point[0], head_point[1] )
-        x_cam, y_cam = self.waitSP()
+        self.waitSP()
         print("Got SP")
         time.sleep(1)
-        x_cam, y_cam = self.waitSP()
-        print("error in pixels: " + str(x_cam - x_cam_sp)\
-              +", " + str(y_cam - y_cam_sp))
+        print("error in pixels: " + str(self.x_cam - x_cam_sp)\
+              +", " + str(self.y_cam - y_cam_sp))
 
     def waitSP( self ):
-        t, x_head_error, y_head_error = self.motor.getSPerror()
         while True:
             t, x_head_error, y_head_error = self.motor.getSPerror()
 #            self.motor.printValues(t, x_head_error, y_head_error)
@@ -96,9 +103,6 @@ class Controller:
                 (x_head_error == 0) & \
                     (y_head_error == 0) :
             #                time.sleep(2) # esperamos a que la imagen se estabilice
-                break
-            key = cv.waitKey( 30 )
-            if key == ord('q') or key == 27:
                 break
     
     def linearRegression( self ):
@@ -129,7 +133,7 @@ class Controller:
         sy2 = np.sum(self.p[:,3]**2)
         # coeficientes a0 y a1
         self.A[1] = (n*sxy-sx*sy)/(n*sx2-sx**2)
-        self.B[1] = ym - self.A[0]*xm
+        self.B[1] = ym - self.A[1]*xm
         numerador = n*sxy - sx*sy
         raiz1 = np.sqrt(n*sx2-sx**2)
         raiz2 = np.sqrt(n*sy2-sy**2)
@@ -137,6 +141,7 @@ class Controller:
         print(self.A)
         print(self.B)
         print(self.r)
+#        if n > 6: self.callibrated = True
 
     def calculateCoefficents( self ):
         x_cam_0 = self.p[0,0]

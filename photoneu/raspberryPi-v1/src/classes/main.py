@@ -15,9 +15,13 @@ from controller import Controller
 # up_left: 113, 101
 # down_right: 490, 357
 
+p_cam = [[288,227], [489,94],[127,373],[113,101],[490,357]]
 controller = Controller()
+controller.callibrate()
+for i in range(5):
+    controller.testCallibration(p_cam[i][0], p_cam[i][1])
 controller.cam_thread.join()
-controller.motor_thread.join()
+#controller.motor_thread.join()
 
 #while True:
 #    key = cv.waitKey( 30 )
