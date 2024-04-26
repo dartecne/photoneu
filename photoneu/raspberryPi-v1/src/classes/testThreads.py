@@ -13,7 +13,8 @@ motor = MotorHandler()
 
 def cam_thread(name):
     while True:
-        frame, hsv, gray, frame_threshold = cam.getImage()
+        frame, hsv, gray = cam.getImage()
+        frame_threshold = cam.filterColor(hsv, 'red')
         #circles = cam.findHoughCircles(frame, gray)
         n, x, y = cam.findContours(frame, frame_threshold)
         cam.showImage(frame, frame_threshold)

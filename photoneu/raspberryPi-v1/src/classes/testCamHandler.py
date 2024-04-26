@@ -1,17 +1,11 @@
 from __future__ import print_function
 import cv2 as cv
+import time
 
 from camHandler import CamHandler
 
 cam = CamHandler()
 
-while True:
-    frame, hsv, gray, frame_threshold = cam.getImage()
-    #circles = cam.findHoughCircles(frame, gray)
-    n, x, y = cam.findContours(frame, frame_threshold)
-    cam.showImage(frame, frame_threshold)
-
-    key = cv.waitKey( 30 )
-    if key == ord('q') or key == 27:
-        break
-    
+cam.control_thread.join()
+#while True:
+#    time.sleep(0.5)

@@ -13,30 +13,29 @@ class Controller:
     def __init__(self):
         self.cam = CamHandler()
         self.motor = MotorHandler()
-        time.sleep(9)
+#        time.sleep(9)
         self.n = -1
         self.x_cam = -1
         self.y_cam = -1
+        self.x_cam_old = -1
+        self.y_cam_old = -1
+        self.vx_cam = -1
+        self.vy_cam = -1
+        self.v_thres = 3    # num pixels que se consideran movimiento en el target 
+        self.color = 'red'
         self.p = np.zeros((2,4))    
-        self.callibrated = False
-        self.A = [1.1, 1.1]
-        self.B = [1.1, 1.1]
+        self.callibrated = True
+        self.target_moving = False # flag, movimiento del circuilo que detecta la camara
+        self.target_moving_old = False # flag, movimiento del circuilo que detecta la camara
+        self.A = [-53.82, 54]
+        self.B = [26231, 114]
         self.r = [1.1, 1.1] #coeff de correlacion 
-        self.cam_thread = threading.Thread( target = self.cam_thread, args=(1,) )
 #        self.motor_thread = threading.Thread( target = self.motor_thread, args=(1,) )
-        self.cam_thread.start()
 #       self.motor_thread.start()
     
     def cam_thread( self, name ):
-        while True:
-            frame, hsv, gray, frame_threshold = self.cam.getImage()
-            #circles = cam.findHoughCircles(frame, gray)
-            self.n, self.x_cam, self.y_cam = self.cam.findContours(frame, frame_threshold)
-            self.cam.showImage(frame, frame_threshold)
+        self.cam.controlLoop( name )
 
-            key = cv.waitKey( 30 )
-            if key == ord('q') or key == 27:
-                break
 
     def motor_thread( self, name ):
         i = 0
@@ -49,8 +48,8 @@ class Controller:
                 t, x_motor, y_motor = self.motor.getMotorPosition()
                 break
 
-
     def callibrate(self):
+        self.color = 'red'
         p_head = [[19000, 5000], [19000, 20000],[2000, 20000],\
                   [2000, 5000],[9700, 12000]]
         for i in range( len(p_head) ):
@@ -73,7 +72,8 @@ class Controller:
 #            (self.x_cam != -1 ) &\
 #            (self.y_cam != -1):
 #                break
-        time.sleep(1.5) #compensacion del retardo de la camara
+        while self.target_moving == True :
+            time.sleep(0.02) #compensacion del retardo de la camara
         if i < 2:
             self.p[i] = [self.x_cam,self.y_cam,x,y]
         else:
@@ -82,8 +82,15 @@ class Controller:
         print(self.p)
         return t, x, y
 
-    def testCallibration( self, x_cam_sp, y_cam_sp ):
+    def moveMotorPixels( self, x_cam_sp, y_cam_sp ):
         if self.callibrated == False:
+            print("Device not callibrated")
+            return -1
+#        if( self.x_cam == self.x_cam_old) & \
+#            ( self.y_cam == self.y_cam_old) :
+#            return -1
+        if( x_cam_sp < 0 ) & \
+            ( y_cam_sp < 0 ) :
             return -1
         head_point = self.pixels2steps([x_cam_sp, y_cam_sp])
         print("moving to pixels: " + str(x_cam_sp) + "," + str(y_cam_sp))

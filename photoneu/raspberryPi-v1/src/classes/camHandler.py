@@ -1,12 +1,51 @@
 from __future__ import print_function
+import threading
 import numpy as np
 import cv2 as cv
 
 
 
+class Target:
+    def __init__(self): 
+        self.color_id = ""
+        self.real_color = np.array([110, 100, 100])  #in HSV
+        self.pos = np.array([-1,-1])
+        self.vel = np.array([0, 0])
+        self.pos_old = np.array([0, 0])
+        self.is_moving = False
+        self.is_moving_old = False
+        self.v_thres = 12 # number of pixels , its moving
+        self.vel_mod = 0
+        self.update()
+
+    def update( self ):
+#        print( "Target::head pos = " + str(self.pos) )
+#        print( "Target::head pos_old = " + str(self.pos_old) )
+#            print("CamHandler::v_head = " + str(self.header.vel))
+
+        self.vel = self.pos - self.pos_old
+        self.vel_mod = np.dot( self.vel, self.vel )
+
+        if self.vel_mod > self.v_thres :
+            self.is_moving = True
+        else:
+            self.is_moving = False
+        
+        if self.is_moving != self.is_moving_old:
+            if self.is_moving == True: 
+                print( "Target::target moving: " + \
+                      str( self.vel[0] ) + ", " + str( self.vel[1] ) )
+            else: print( "Target::target stopped" )
+
+        self.pos_old = np.copy( self.pos )
+        self.is_moving_old = self.is_moving
 
 class CamHandler:
-    def __init__(self):
+    def __init__( self ):
+        #@TODO: array de targets
+        self.header = Target()
+        self.header.color = "red"
+        self.n_circles = 0
         self.window_capture_name = 'Video Capture'
         self.window_detection_name = 'Object Detection'
         self.low_V_name = 'Low V'
@@ -14,16 +53,56 @@ class CamHandler:
         self.max_value = 255
         self.low_V = 0
         self.high_V = 20 # maximo valor bajo el cual se considera color negro
+#@TODO: incluir color negro, para el raton
+        self.color_h = {'red':[0,18],'orange':[5,18],'yellow':[22,37],'green':[42,85],'blue':[105,133],'purple':[115,165],'red_2':[160,180]}  #Here is the range of H in the HSV color space represented by the color
+        self.color_s = {'red':[20,255], 'red_2':[20,255], 'blue':[122,255]}  
+        self.color_v = {'red':[60,180],'red_2':[60,255],'blue':[60,255]}
 
-
+        self.stop = False
         self.cap = cv.VideoCapture( 0 )
+
         cv.namedWindow( self.window_capture_name )
         cv.namedWindow( self.window_detection_name )
         cv.createTrackbar( self.low_V_name, self.window_detection_name , \
                           self.low_V, self.max_value, self.on_low_V_thresh_trackbar )
         cv.createTrackbar( self.high_V_name, self.window_detection_name , \
                           self.high_V, self.max_value, self.on_high_V_thresh_trackbar )
+        self.control_thread = threading.Thread( target = self.controlLoop, args=(1,) )
+        self.control_thread.start()
 
+    def endSystem( self ):
+        print( "CamHandler::exiting" )
+        self.stop = True
+        cv.destroyAllWindows()
+        exit()
+
+    def controlLoop( self, name ):
+        while True:
+            frame, hsv, gray = self.getImage()
+            #@TODO: añadir deteccion de todos los colores
+            frame_threshold = self.filterColor( hsv, self.header.color)
+            #circles = cam.findHoughCircles(frame, gray)
+            self.n_circles, \
+                self.header.pos[0],\
+                     self.header.pos[1] = self.findContours(frame, frame_threshold)
+            cv.putText( frame,"n_circles = " + str(self.n_circles),(20,20), \
+                       cv.FONT_HERSHEY_SIMPLEX, 0.5,(100,100,150),2)
+
+            cv.putText( frame,"v_head = " + str(self.header.vel_mod),(20,40), \
+                       cv.FONT_HERSHEY_SIMPLEX, 0.5,(100,100,150),2)
+            
+            self.showImage( frame, frame_threshold)
+            if self.n_circles < 1:
+                print("CamHandler::no circles!")
+                continue
+            print("CamHandler::head pos = " + str(self.header.pos))
+
+            self.header.update()
+            print("CamHandler::head pos old = " + str(self.header.pos_old))
+            print("CamHandler::v_head = " + str(self.header.vel))
+            if self.stop == True:
+                print("CamHandler::stopping control thread")
+                break
 
     def getImage( self ):
         ret, frame = self.cap.read()
@@ -34,18 +113,31 @@ class CamHandler:
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 #        rows = gray.shape[0]
         hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)     # Convert from BGR to HSV
-        kernel = np.ones((6,6),np.uint8) 
-        # filtro del rojo
-        mask = cv.inRange( hsv,(160, 60, 60), (180, 255, 255) ) 
-        mask_2 = cv.inRange( hsv, (0, 90, 50), (18, 255, 255) ) # red HSV: 0,18
-        mask = cv.bitwise_or( mask, mask_2 )
-#        mask = cv.inRange( mask, self.low_V, self.high_V )
-        frame_threshold = cv.morphologyEx( mask, cv.MORPH_OPEN, kernel,iterations = 2 )              # Perform an open operation on the image 
-        return frame, hsv, gray, frame_threshold
+        return frame, hsv, gray
     
+    def filterColor( self, hsv, color ):
+        # filtro del rojo
+        mask = cv.inRange( hsv,( self.color_h[color][0], \
+                                self.color_s[color][0], \
+                                self.color_v[color][0]), \
+                          (self.color_h[color][1], 255, 255) ) 
+        if color == 'red':
+            mask_2 = cv.inRange( hsv, ( self.color_h['red_2'][0], \
+                                        self.color_s['red_2'][0],\
+                                        self.color_v['red_2'][0]), \
+                                ( self.color_h['red_2'][1], 255, 255) ) # red HSV: 0,18
+            mask = cv.bitwise_or( mask, mask_2 )
+#        mask = cv.inRange( mask, self.low_V, self.high_V )
+        kernel = np.ones((6,6),np.uint8) 
+        frame_threshold = cv.morphologyEx( mask, cv.MORPH_OPEN, kernel, iterations = 2 )              # Perform an open operation on the image 
+        return frame_threshold
+
     def showImage(self, frame, frame_threshold):
         cv.imshow( self.window_detection_name, frame_threshold )
         cv.imshow( self.window_capture_name, frame )
+        key = cv.waitKey( 30 )
+        if key == ord('q') or key == 27:
+            self.endSystem()
 
     def findHoughCircles(self, frame, gray):
         circles = cv.HoughCircles(gray, cv.HOUGH_GRADIENT, 1, 40,
@@ -67,6 +159,7 @@ class CamHandler:
     def findContours(self, frame, frame_threshold):
         x = -1
         y = -1
+        real_color = np.array([0,0,0])
         # Find the contour in morphologyEx_img, and the contours are arranged according to the area from small to large.
         _tuple = cv.findContours( frame_threshold,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE ) 
         if len(_tuple) == 3:
@@ -86,10 +179,11 @@ class CamHandler:
                     x = int(M['m10']/M['m00']) 
                     y = int(M['m01']/M['m00'])
                     x,y,w,h = cv.boundingRect(i)      # Decompose the contour into the coordinates of the upper left corner and the width and height of the recognition 
-                    if w > 20 and h > 20 and abs(w-h) < 4 :       
+                    if w > 20 and h > 20 and abs(w-h) < 4 :    
+# TODO: get real color of rectangle                        real_color[0] = cv.frame   
                         cv.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)  # Draw a rectangular frame
                         cv.putText(frame,str(x) + "," + str(y),(x,y), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)# Add character description
-        return color_area_num, x, y
+        return color_area_num, x, y, real_color
 
     def printValues( self, x, y ):
 #        n, x, y = self.findContours()

@@ -192,8 +192,8 @@ void calibrate() {
 }
 
 void setPoint( unsigned int x, unsigned int y ) {
-  xSP = x;
-  ySP = y;
+  xSP = constrain( x, 0, xMax );
+  ySP = constrain( y, 0, yMax );
   stop = false;
 //  Serial.print( "Going to xSP: " ); Serial.print(xSP); 
 //  Serial.print(" ySP: "); Serial.println( ySP );

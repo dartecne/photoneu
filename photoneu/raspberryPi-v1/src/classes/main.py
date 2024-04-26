@@ -19,7 +19,15 @@ p_cam = [[288,227], [489,94],[127,373],[113,101],[490,357]]
 controller = Controller()
 controller.callibrate()
 for i in range(5):
-    controller.testCallibration(p_cam[i][0], p_cam[i][1])
+    controller.moveMotorPixels(p_cam[i][0], p_cam[i][1])
+controller.color = 'blue'
+while True:
+    while controller.target_moving == False:
+        x = controller.x_cam
+        y = controller.y_cam
+        if controller.n == 1:
+            controller.moveMotorPixels( x, y )
+
 controller.cam_thread.join()
 #controller.motor_thread.join()
 

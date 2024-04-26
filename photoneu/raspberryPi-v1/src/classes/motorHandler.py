@@ -6,12 +6,19 @@ class MotorHandler:
     def __init__(self):
         self.port = '/dev/ttyACM0'
         self.baudrate = 230400
-        self.ser = serial.Serial( self.port, self.baudrate )
+        while True:
+            try:
+                self.ser = serial.Serial( self.port, self.baudrate )
+                break
+            except:
+                print("Unable to open Serial Port: %s" % (self.port))
+                print("Trying Port: /dev/ttyACM1")
+                self.port = '/dev/ttyACM1'
         if self.ser.isOpen(): print(">>>Opened port: \"%s\"." % (self.port))
-        else :
-            print("Unable to open Serial Port: %s" % (self.port))
-            print(">>>exiting")
-            exit()
+        else:
+                print("Unable to open Serial Port: %s" % (self.port))
+                print(">>>exiting")
+                exit()
 
     def sendCode( self, msg ) :
         print(">>> sendCode ")
@@ -26,6 +33,10 @@ class MotorHandler:
         self.ser.write( msg.encode(encoding= 'ascii') )    
 
     def moveHead( self, x_head, y_head ):
+        x_head = max(0,x_head)
+        y_head = max(0,y_head)
+        x_head = min(19430,x_head)
+        y_head = min(24272,y_head)
         print( "moving to: " + str(x_head) + str(", ") + str(y_head) )
         msg = "X" + str(int(x_head)).zfill(5) + "Y" + str(int(y_head)).zfill(5) 
         self.sendCode(msg)
