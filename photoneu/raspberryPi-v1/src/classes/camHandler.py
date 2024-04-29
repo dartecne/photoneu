@@ -7,16 +7,55 @@ import cv2 as cv
 
 class Target:
     def __init__(self): 
+        self.limits = (0,0)
+        self.max_radius = 60
         self.color_id = ""
-        self.real_color = np.array([110, 100, 100])  #in HSV
-        self.pos = np.array([-1,-1])
+#        self.real_color = np.array([110, 100, 100])  #in HSV
+        self.mean_color = 0
+        self.pos = np.array([0, 0])
         self.vel = np.array([0, 0])
         self.pos_old = np.array([0, 0])
         self.is_moving = False
         self.is_moving_old = False
-        self.v_thres = 12 # number of pixels , its moving
+        self.is_tracked = False
+        self.v_thres = 120 # number of pixels , its moving
         self.vel_mod = 0
+        self.ratio = 0 # ratio of circle in pixels
+#        self.tracker = cv.Tracker()
         self.update()
+
+#@TODO:
+    def track(self, x, y, r, c):
+        if(x == -1) | (y == -1): 
+            return
+#        tracker = cv.Tracker()
+#       is_initialized = tracker.init(frame, bounding_box)
+#       is_tracking, bounding_box = tracker.update(frame)
+        if (x > 0) & (x < self.limits[0]) & \
+            (y > 0) & (y < self.limits[1]) & \
+            (r > 0 ) & (r < self.max_radius):
+            self.is_tracked = True
+        else:
+            self.is_tracked = False
+
+    def setFeatures(self, x, y, r, c):
+        pos = np.array([0,0])
+        pos[0] = x
+        pos[1] = y
+
+        m = np.dot( pos - self.pos,\
+                    pos - self.pos)
+        if m > 6000:
+            print("Target::New pos out of range: " + str(m))
+            if self.is_tracked == False:
+                self.track(x, y, r, c)
+            else:
+                return
+        if self.is_tracked == True:
+            self.pos[0] = x
+            self.pos[1] = y
+            self.ratio = r
+            self.mean_color = c
 
     def update( self ):
 #        print( "Target::head pos = " + str(self.pos) )
@@ -33,9 +72,9 @@ class Target:
         
         if self.is_moving != self.is_moving_old:
             if self.is_moving == True: 
-                print( "Target::target moving: " + \
-                      str( self.vel[0] ) + ", " + str( self.vel[1] ) )
-            else: print( "Target::target stopped" )
+                print( ">>>>Target::target moving: " + \
+                      str( self.vel[0] ) + ", " + str( self.vel[1] ) + ": " + str(self.vel_mod) )
+            else: print( "<<<<Target::target stopped" )
 
         self.pos_old = np.copy( self.pos )
         self.is_moving_old = self.is_moving
@@ -44,7 +83,7 @@ class CamHandler:
     def __init__( self ):
         #@TODO: array de targets
         self.header = Target()
-        self.header.color = "red"
+        self.header.color_id = "red"
         self.n_circles = 0
         self.window_capture_name = 'Video Capture'
         self.window_detection_name = 'Object Detection'
@@ -79,16 +118,20 @@ class CamHandler:
     def controlLoop( self, name ):
         while True:
             frame, hsv, gray = self.getImage()
+            self.header.limits = frame.shape
             #@TODO: añadir deteccion de todos los colores
-            frame_threshold = self.filterColor( hsv, self.header.color)
+            frame_threshold = self.filterColor( hsv, self.header.color_id)
             #circles = cam.findHoughCircles(frame, gray)
-            self.n_circles, \
-                self.header.pos[0],\
-                     self.header.pos[1] = self.findContours(frame, frame_threshold)
+            self.n_circles, x, y, r, c = self.findContours(frame, frame_threshold)
+            self.header.setFeatures(x, y, r, c)
+            
             cv.putText( frame,"n_circles = " + str(self.n_circles),(20,20), \
                        cv.FONT_HERSHEY_SIMPLEX, 0.5,(100,100,150),2)
 
             cv.putText( frame,"v_head = " + str(self.header.vel_mod),(20,40), \
+                       cv.FONT_HERSHEY_SIMPLEX, 0.5,(100,100,150),2)
+
+            cv.putText( frame,"head_color = " + str(self.header.mean_color),(20,60), \
                        cv.FONT_HERSHEY_SIMPLEX, 0.5,(100,100,150),2)
             
             self.showImage( frame, frame_threshold)
@@ -159,7 +202,7 @@ class CamHandler:
     def findContours(self, frame, frame_threshold):
         x = -1
         y = -1
-        real_color = np.array([0,0,0])
+        mean_color = 0
         # Find the contour in morphologyEx_img, and the contours are arranged according to the area from small to large.
         _tuple = cv.findContours( frame_threshold,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE ) 
         if len(_tuple) == 3:
@@ -172,18 +215,31 @@ class CamHandler:
         if color_area_num > 0: 
             for i in contours:    # Traverse all contours
                 approx = cv.approxPolyDP( 
-                i, 0.01 * cv.arcLength(i, True), True)
+                    i, 0.01 * cv.arcLength(i, True), True)
     #      print(approx)
                 M = cv.moments(i) 
                 if M['m00'] != 0.0: 
                     x = int(M['m10']/M['m00']) 
                     y = int(M['m01']/M['m00'])
-                    x,y,w,h = cv.boundingRect(i)      # Decompose the contour into the coordinates of the upper left corner and the width and height of the recognition 
+                    area = cv.contourArea(i)
+                    x,y,w,h = cv.boundingRect(i)      # Decompose the c#ontour into the coordinates of the upper left corner and the width and height of the recognition 
+ #                   if cv.contourArea(i) < 600 & cv.contourArea > 300:
+                    (c_x,c_y), radius = cv.minEnclosingCircle(i)
+                    center = (int(c_x), int(c_y))
+                    radius = int(radius)
                     if w > 20 and h > 20 and abs(w-h) < 4 :    
-# TODO: get real color of rectangle                        real_color[0] = cv.frame   
-                        cv.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)  # Draw a rectangular frame
-                        cv.putText(frame,str(x) + "," + str(y),(x,y), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)# Add character description
-        return color_area_num, x, y, real_color
+                        mask = np.zeros(frame.shape, np.uint8)
+                        cv.drawContours(mask,[i],0,255,-1)
+                        pixelpoints = np.transpose(np.nonzero(mask))
+#                        mean_color = cv.mean(frame, mask = mask)
+                        mean_color = cv.mean( pixelpoints )
+#                        cv.rectangle(frame,(x,y),(x+w,y+h),(0,255,0),2)  # Draw a rectangular frame
+                        cv.circle(frame,center,radius,(0,255,100),1)
+                        cv.putText(frame,str(x) + "," + str(y),(x,y), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)
+                        cv.putText(frame,str(cv.contourArea(i)),(x,y + 60), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)
+
+        return color_area_num, x, y, radius, mean_color
+
 
     def printValues( self, x, y ):
 #        n, x, y = self.findContours()
