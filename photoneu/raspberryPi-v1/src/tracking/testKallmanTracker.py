@@ -70,6 +70,16 @@ class Tracker():
         # Initially, it is set to the same value as the predicted state.
         self.kalman.statePost = np.array([[cx], [cy], [0], [0]], np.float32)
 
+    def update( self, frame, hsvframe):
+           # Update the Kalman filter with the current measurement.
+        measurement = self.kalman.measurementMatrix * self.kalman.statePre
+        self.kalman.update(measurement)
+        self.kalman.statePost = self.kalman.transitionMatrix * self.kalman.statePre #+ processNoise
+
+        # Predict the next state of the object.
+        prediction = self.kalman.predict()
+
+        return prediction
 
 ################ MAIN 
 
@@ -108,31 +118,32 @@ while True:
     # Find contours in the thresholded image.
     contours, hier = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Convert the frame to HSV color space for tracking.
-    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
     # Draw red rectangles around large contours.
     # If there are no senators being tracked yet, create new trackers.
     should_initialize_senators = len(senators) == 0
     id = 0
+    boundingRects = []
     for c in contours:
         # Check if the contour area is larger than a threshold.
         if cv2.contourArea(c) > 500:
             # Get the bounding rectangle coordinates.
-            (x, y, w, h) = cv2.boundingRect(c)
-            
+            boundingRects.append(cv2.boundingRect(c))
+            (x, y, w, h) =cv2.boundingRect(c)
             # Draw a rectangle around the contour.
             cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 1)
             
             # If no senators are being tracked yet, create a new tracker for each contour.
             if should_initialize_senators:
-                senators.append(Tracker(id, hsv_frame, (x, y, w, h)))
+                senators.append(Tracker(id, hsv, (x, y, w, h)))
                 
         id += 1
 
     # Update the tracking of each senator.
-    for senator in senators:
-        senator.kalman.update(frame, hsv_frame)
+    for i, senator in enumerate(senators):
+#        senator.kalman.update(frame, hsv_frame)   
+        prediction = senator.kalman.predict()
+        (x, y, w, h) = boundingRects[i]
+        filter_state = senator.kalman.correct(np.array([x, y, w, h], np.float32))
 
     # Display the frame with senators being tracked.
     cv2.imshow('Senators Tracked', frame)
