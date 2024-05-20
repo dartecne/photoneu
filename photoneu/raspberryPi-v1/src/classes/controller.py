@@ -7,77 +7,47 @@ import random
 from camHandler import CamHandler
 from motorHandler import MotorHandler
 
-#@TODO: separar en hebras el reconocimiento por visión y la escritura en el motor
-
 class Controller:
     def __init__(self):
         self.cam = CamHandler()
         self.motor = MotorHandler()
-#        time.sleep(9)
-        self.n = -1
-        self.x_cam = -1
-        self.y_cam = -1
-        self.x_cam_old = -1
-        self.y_cam_old = -1
-        self.vx_cam = -1
-        self.vy_cam = -1
-        self.v_thres = 3    # num pixels que se consideran movimiento en el target 
-        self.color = 'red'
-        self.p = np.zeros((2,4))    
-        self.callibrated = True
-        self.target_moving = False # flag, movimiento del circuilo que detecta la camara
-        self.target_moving_old = False # flag, movimiento del circuilo que detecta la camara
+        self.p = np.zeros((2,4)) 
+#        self.p = [] # number of points (in pixels) to correlate    
+        self.callibrated = False
         self.A = [-53.82, 54]
-        self.B = [26231, 114]
+        self.B = [22008, 3665]
         self.r = [1.1, 1.1] #coeff de correlacion 
 #        self.motor_thread = threading.Thread( target = self.motor_thread, args=(1,) )
 #       self.motor_thread.start()
-    
-    def cam_thread( self, name ):
-        self.cam.controlLoop( name )
-
-
-    def motor_thread( self, name ):
-        i = 0
-        time.sleep(9)
-        while True:
-            t, x_head_error, y_head_error = self.motor.getSPerror()
-            if (t!=-1) & \
-                (x_head_error == 0) & \
-                    (y_head_error == 0) :
-                t, x_motor, y_motor = self.motor.getMotorPosition()
-                break
 
     def callibrate(self):
-        self.color = 'red'
-        p_head = [[19000, 5000], [19000, 20000],[2000, 20000],\
-                  [2000, 5000],[9700, 12000]]
+        p_head = [[19000, 6000], [19000, 18000],\
+                  [2000, 18000], [2000, 6000],\
+                    [9700, 12000]]
         for i in range( len(p_head) ):
-            t, x, y = self.getPoint(i)
 #            dx = random.randrange(-2000,2000,1)
 #            dy = random.randrange(-2000,2000,1)
             self.motor.moveHead( p_head[i][0], p_head[i][1] )
+            t, x, y = self.getPoint(i)
             time.sleep(2)
             i = i + 1
             if i > 2: 
                 self.linearRegression()
+        self.callibrated = True
 
     def getPoint(self, i):
+        '''Get cam and motor points when header is stopped'''
         print( "Getting point " + str(i))
         self.waitSP()
         print( "Got SP" )
         t, x, y = self.motor.getMotorPosition()
-#        while True:
-#            if( self.n == 1) & \
-#            (self.x_cam != -1 ) &\
-#            (self.y_cam != -1):
-#                break
-        while self.target_moving == True :
+        while self.cam.target.is_moving == True :
             time.sleep(0.02) #compensacion del retardo de la camara
+        print( "Got cam point" )
         if i < 2:
-            self.p[i] = [self.x_cam,self.y_cam,x,y]
+            self.p[i] = [self.cam.target.pos[0],self.cam.target.pos[1],x,y]
         else:
-            self.p = np.append(self.p, [[self.x_cam,self.y_cam,x,y]], axis=0)
+            self.p = np.append(self.p, [[self.cam.target.pos[0],self.cam.target.pos[1],x,y]], axis=0)
         print("reference points:")
         print(self.p)
         return t, x, y
@@ -86,21 +56,20 @@ class Controller:
         if self.callibrated == False:
             print("Device not callibrated")
             return -1
-#        if( self.x_cam == self.x_cam_old) & \
-#            ( self.y_cam == self.y_cam_old) :
-#            return -1
         if( x_cam_sp < 0 ) & \
             ( y_cam_sp < 0 ) :
-            return -1
+            return -2
         head_point = self.pixels2steps([x_cam_sp, y_cam_sp])
         print("moving to pixels: " + str(x_cam_sp) + "," + str(y_cam_sp))
         print( head_point )
         self.motor.moveHead( head_point[0], head_point[1] )
         self.waitSP()
         print("Got SP")
-        time.sleep(1)
-        print("error in pixels: " + str(self.x_cam - x_cam_sp)\
-              +", " + str(self.y_cam - y_cam_sp))
+        while self.cam.target.is_moving == True :
+            time.sleep(0.02) #compensacion del retardo de la camara
+#        time.sleep(1)
+        print("error in pixels: " + str(self.cam.target.pos[0] - x_cam_sp)\
+              +", " + str(self.cam.target.pos[1] - y_cam_sp))
 
     def waitSP( self ):
         while True:
@@ -131,8 +100,8 @@ class Controller:
         raiz2 = np.sqrt(n*sy2-sy**2)
         self.r[0] = numerador/(raiz1*raiz2)
 
-        xm  = np.mean(self.p[:,1]) #x_cam[i]
-        ym  = np.mean(self.p[:,3]) #x_motor[i]
+        xm  = np.mean(self.p[:,1]) #y_cam[i]
+        ym  = np.mean(self.p[:,3]) #y_motor[i]
         sx  = np.sum(self.p[:,1])
         sy  = np.sum(self.p[:,3])
         sxy = np.sum(self.p[:,1]*self.p[:,3])

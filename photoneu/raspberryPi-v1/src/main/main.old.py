@@ -75,6 +75,7 @@ def sendCodeTest( msg ) :
         except:
             print( "ERROR receiving message" )
             return 
+        
 def sendCode( msg ) :
     print(">>> writing... ")
     msg += "\0"

@@ -9,26 +9,29 @@ import sys
 from controller import Controller
 
 
+#   posiciones del header en pixeles
 # centro: 288, 227 o bien 324, 242
 # up_right: 489, 94
 # down_left: 127,373
 # up_left: 113, 101
 # down_right: 490, 357
 
-p_cam = [[288,227], [489,94],[127,373],[113,101],[490,357]]
+p_cam = [[220,150], [50,60], [50,277], [380,270], [384,30]]
 controller = Controller()
-controller.callibrate()
+time.sleep(9)
+controller.callibrated = True
+#controller.callibrate()
 for i in range(5):
-    controller.moveMotorPixels(p_cam[i][0], p_cam[i][1])
-controller.color = 'blue'
+    controller.moveMotorPixels( p_cam[i][0], p_cam[i][1] )
+    time.sleep(1)
+#controller.color = 'blue'
 while True:
-    while controller.target_moving == False:
-        x = controller.x_cam
-        y = controller.y_cam
-        if controller.n == 1:
-            controller.moveMotorPixels( x, y )
+    while controller.cam.target.is_moving == False:
+        x = controller.cam.target.pos[0]
+        y = controller.cam.target.pos[1]
+        controller.moveMotorPixels( x, y )
 
-controller.cam_thread.join()
+#controller.cam.join()
 #controller.motor_thread.join()
 
 #while True:
