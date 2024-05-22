@@ -3,6 +3,7 @@ import time
 import numpy as np
 import cv2 as cv
 import random
+import logging
 
 from camHandler import CamHandler
 from motorHandler import MotorHandler
@@ -11,28 +12,47 @@ class Controller:
     def __init__(self):
         self.cam = CamHandler()
         self.motor = MotorHandler()
-        self.p = np.zeros((2,4)) 
-#        self.p = [] # number of points (in pixels) to correlate    
+        self.motor_steps_thres = 10 # diferencia de pasos para que se envie comando de movimiento al motor
+        self.p = np.zeros((2,4)) # points for linear regresion
         self.callibrated = False
         self.A = [-53.82, 54]
         self.B = [22008, 3665]
         self.r = [1.1, 1.1] #coeff de correlacion 
-#        self.motor_thread = threading.Thread( target = self.motor_thread, args=(1,) )
-#       self.motor_thread.start()
+
+        self.log_info = logging.getLogger("info")
+        self.log_data = logging.getLogger("data")
+        self.log_info.setLevel(logging.INFO)
+        self.log_data.setLevel(logging.INFO)        
+        formater= logging.Formatter('%(tns)s,%(message)s')
+        info_fh = logging.FileHandler('info.log')
+        data_fh = logging.FileHandler('data.log')
+        info_fh.setFormatter( formater )
+        data_fh.setFormatter( formater )
+        self.log_info.addHandler( info_fh )
+        self.log_data.addHandler( data_fh )
+
 
     def callibrate(self):
         p_head = [[19000, 6000], [19000, 18000],\
                   [2000, 18000], [2000, 6000],\
                     [9700, 12000]]
-        for i in range( len(p_head) ):
-#            dx = random.randrange(-2000,2000,1)
-#            dy = random.randrange(-2000,2000,1)
-            self.motor.moveHead( p_head[i][0], p_head[i][1] )
+        for i in range( 20 ):
+            
+            rand_x = random.randrange(2000, 19000, 1)
+            rand_y = random.randrange(6000, 18000, 1)
+#            self.motor.moveHead( p_head[i][0], p_head[i][1] )
+            self.motor.moveHead( rand_x, rand_y )
             t, x, y = self.getPoint(i)
-            time.sleep(2)
+            time.sleep(0.5)
             i = i + 1
             if i > 2: 
                 self.linearRegression()
+            msg = str(x) + "," + str(y) + "," +\
+                str(self.cam.target.pos[0]) + "," +\
+                str(self.cam.target.pos[1])
+            d = {'tns':time.clock_gettime_ns(0)}
+            self.log_data.info( msg, extra = d )
+
         self.callibrated = True
 
     def getPoint(self, i):
@@ -60,6 +80,10 @@ class Controller:
             ( y_cam_sp < 0 ) :
             return -2
         head_point = self.pixels2steps([x_cam_sp, y_cam_sp])
+        if (head_point[0] - self.motor.x) < self.motor_steps_thres & \
+            (head_point[1] - self.motor.y) < self.motor_steps_thres :
+            return -3
+
         print("moving to pixels: " + str(x_cam_sp) + "," + str(y_cam_sp))
         print( head_point )
         self.motor.moveHead( head_point[0], head_point[1] )
@@ -68,8 +92,14 @@ class Controller:
         while self.cam.target.is_moving == True :
             time.sleep(0.02) #compensacion del retardo de la camara
 #        time.sleep(1)
-        print("error in pixels: " + str(self.cam.target.pos[0] - x_cam_sp)\
-              +", " + str(self.cam.target.pos[1] - y_cam_sp))
+        error = str(self.cam.target.pos[0] - x_cam_sp)\
+              +", " + str(self.cam.target.pos[1] - y_cam_sp)
+        print("error in pixels: " + error)
+        msg = str(head_point[0]) + "," + str(head_point[1]) + "," +\
+                str(self.cam.target.pos[0]) + "," + str(self.cam.target.pos[1]) + "," + \
+                error
+        d = {'tns':time.clock_gettime_ns(0)}
+        self.log_info.info( msg, extra = d )
 
     def waitSP( self ):
         while True:
@@ -78,8 +108,8 @@ class Controller:
             if (t!=-1) & \
                 (x_head_error == 0) & \
                     (y_head_error == 0) :
-            #                time.sleep(2) # esperamos a que la imagen se estabilice
-                break
+                        self.motor.getMotorPosition() # ademas de get hace un update
+                        break
     
     def linearRegression( self ):
 #        self.p[i] = [x_cam,y_cam,x_motor,y_motor]

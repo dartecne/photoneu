@@ -16,11 +16,11 @@ from controller import Controller
 # up_left: 113, 101
 # down_right: 490, 357
 
-p_cam = [[220,150], [50,60], [50,277], [380,270], [384,30]]
+p_cam = [[220,150], [78,64], [78,277], [380,270], [384,64]]
 controller = Controller()
 time.sleep(9)
-controller.callibrated = True
-#controller.callibrate()
+#controller.callibrated = True
+controller.callibrate()
 for i in range(5):
     controller.moveMotorPixels( p_cam[i][0], p_cam[i][1] )
     time.sleep(1)

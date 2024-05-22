@@ -6,6 +6,8 @@ class MotorHandler:
     def __init__(self):
         self.port = '/dev/ttyACM0'
         self.baudrate = 230400
+        self.x = 0
+        self.y = 0
         while True:
             try:
                 self.ser = serial.Serial( self.port, self.baudrate )
@@ -55,6 +57,8 @@ class MotorHandler:
             print("ERROR motor position")
             print("<<< reading... ")
             print(line)
+        self.x = int(x_head)
+        self.y = int(y_head)
         return int(timestamp), int(x_head), int(y_head)
 
     def getSPerror(self) :

@@ -69,6 +69,7 @@ class Target:
     def __init__(self): 
         self.color_id = ""
 #        self.real_color = np.array([110, 100, 100])  #in HSV
+        self.pos_limits = np.array([78, 430, 64, 300])
         self.mean_color = 0
         self.measured_pos = np.array([0, 0]) # posicion dada por la camara
         self.pos = np.array([0, 0]) # posicion filtrada
@@ -99,6 +100,11 @@ class Target:
 #        print( "Target::head pos = " + str(self.pos) )
 #        print( "Target::head pos_old = " + str(self.pos_old) )
         prediction = self.tracker.update( self )  
+        self.pos[0] = max(self.pos[0], self.pos_limits[0])
+        self.pos[0] = min(self.pos[0], self.pos_limits[1])
+        self.pos[1] = max(self.pos[1], self.pos_limits[2])
+        self.pos[1] = min(self.pos[1], self.pos_limits[3])
+
         self.vel[0] = self.pos[0] - self.pos_old[0]
         self.vel[1] = self.pos[1] - self.pos_old[1]
         self.vel_mod = self.vel[0] * self.vel[0] + \
@@ -164,7 +170,7 @@ class CamHandler:
         while True:
             frame, hsv, gray = self.getImage()
             #@TODO: añadir deteccion de todos los colores
-            frame_threshold = self.filterColor( hsv, "blue")
+            frame_threshold = self.filterColor( hsv, "red_2")
             fc = self.findContours(frame, frame_threshold)
             self.matchTargets(fc)
             prediction = self.target.update()
@@ -196,9 +202,9 @@ class CamHandler:
                 break
 
     def getImage( self ):
-        x_crop_min = 90
-        x_crop_max = 60
-        y_crop_min = 90
+        x_crop_min = 70
+        x_crop_max = 40
+        y_crop_min = 50
         y_crop_max = 100
         ret, frame = self.cap.read()
         frame = frame[x_crop_min:(frame.shape[0]-x_crop_max), \
