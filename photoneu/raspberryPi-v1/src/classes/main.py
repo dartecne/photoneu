@@ -21,10 +21,12 @@ controller = Controller()
 time.sleep(9)
 #controller.callibrated = True
 controller.callibrate()
+
 for i in range(5):
     controller.moveMotorPixels( p_cam[i][0], p_cam[i][1] )
     time.sleep(1)
-#controller.color = 'blue'
+controller.set_target_color('blue')
+
 while True:
     while controller.cam.target.is_moving == False:
         x = controller.cam.target.pos[0]

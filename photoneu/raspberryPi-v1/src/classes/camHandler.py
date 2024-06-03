@@ -22,7 +22,7 @@ class Tracker():
         """
 
         self.id = id
-        self.processNoise = 3e-3#3e-5
+        self.processNoise = 1e-1#3e-5
         self.measureNoise = 1e-1#1e-2
 
         self.kalman = cv.KalmanFilter(4, 2, 0)
@@ -31,18 +31,20 @@ class Tracker():
              [0, 1, 0, 1],
              [0, 0, 1, 0],
              [0, 0, 0, 1]], np.float32)
+        
         self.kalman.measurementMatrix = np.array(
             [[1, 0, 0, 0],
              [0, 1, 0, 0]], np.float32)
+        
         self.kalman.processNoiseCov = np.array(
             [[1., 0, 0, 0],
              [0, 1., 0, 0],
              [0, 0, 1., 0],
              [0, 0, 0, 1.]], np.float32) * self.processNoise
 
-        self.kalman.measurementNoiseCov = np.array(
-            [[1., 0], 
-             [0, 1.]], dtype=np.float32) * self.measureNoise
+#        self.kalman.measurementNoiseCov = np.array(
+#            [[1., 0], 
+#             [0, 1.]], dtype=np.float32) * self.measureNoise
         
 
         x, y, w, h = track_window
@@ -69,18 +71,19 @@ class Target:
     def __init__(self): 
         self.color_id = ""
 #        self.real_color = np.array([110, 100, 100])  #in HSV
-        self.pos_limits = np.array([78, 430, 64, 300])
+#        self.pos_limits = np.array([78, 430, 64, 300])
+        self.pos_limits = np.array([78, 430, 50, 300])
         self.mean_color = 0
         self.measured_pos = np.array([0, 0]) # posicion dada por la camara
         self.pos = np.array([0, 0]) # posicion filtrada
         self.vel = np.array([0, 0]) # velocidad filtrada
-        self.v_thres = 1
         self.pos_old = np.array([0, 0])
         self.area = 0
         self.is_moving = False
         self.is_moving_old = False
         self.is_tracked = False
         self.vel_mod = 0.0
+        self.v_thres = 4
         self.radius = 0 # ratio of circle in pixels
         self.boundingRect = None
         self.roi = None
@@ -117,15 +120,15 @@ class Target:
         else:
             self.n_stopped_frames += 1
 #        if self.is_moving != self.is_moving_old:
-        if self.n_stopped_frames < 7:
+        if self.n_stopped_frames < 4:
             self.is_moving = True
-            print( ">>>>Target::target moving: " + \
-                      str( self.vel[0] ) + ", " + str( self.vel[1] ) + ": " + str(self.vel_mod) )
+#            print( ">>>>Target::target moving: " + \
+#                      str( self.vel[0] ) + ", " + str( self.vel[1] ) + ": " + str(self.vel_mod) )
                 
-        elif self.n_stopped_frames >= 5: 
+        elif self.n_stopped_frames >= 4: 
             self.is_moving = False
-            print( "<<<<Target::target stopped" )
-
+ #           print( "<<<<Target::target stopped" )
+#
         self.pos_old = np.copy( self.pos )
         self.is_moving_old = self.is_moving
 
@@ -145,7 +148,7 @@ class CamHandler:
         self.color_h = {'red':[0,18],'orange':[5,18],'yellow':[22,37],'green':[42,85],'blue':[105,133],'purple':[115,165],'red_2':[160,180]}  #Here is the range of H in the HSV color space represented by the color
         self.color_s = {'red':[20,255], 'red_2':[20,255], 'blue':[122,255]}  
         self.color_v = {'red':[60,180],'red_2':[60,255],'blue':[60,255]}
-
+        self.target_color = "red_2"
         self.cap = cv.VideoCapture( 0 )
         self.backSub = cv.createBackgroundSubtractorMOG2()
         self.fgMask = None
@@ -170,7 +173,7 @@ class CamHandler:
         while True:
             frame, hsv, gray = self.getImage()
             #@TODO: añadir deteccion de todos los colores
-            frame_threshold = self.filterColor( hsv, "red_2")
+            frame_threshold = self.filterColor( hsv, self.target_color)
             fc = self.findContours(frame, frame_threshold)
             self.matchTargets(fc)
             prediction = self.target.update()

@@ -18,12 +18,13 @@ class Controller:
         self.A = [-53.82, 54]
         self.B = [22008, 3665]
         self.r = [1.1, 1.1] #coeff de correlacion 
+        self.point = np.array(6) # t_motor, point_motor, t_cam, point_cam 
 
         self.log_info = logging.getLogger("info")
         self.log_data = logging.getLogger("data")
         self.log_info.setLevel(logging.INFO)
         self.log_data.setLevel(logging.INFO)        
-        formater= logging.Formatter('%(tns)s,%(message)s')
+        formater= logging.Formatter('%(message)s')
         info_fh = logging.FileHandler('info.log')
         data_fh = logging.FileHandler('data.log')
         info_fh.setFormatter( formater )
@@ -31,43 +32,65 @@ class Controller:
         self.log_info.addHandler( info_fh )
         self.log_data.addHandler( data_fh )
 
+    def set_target_color(self, color):
+        self.cam.target_color = color
 
     def callibrate(self):
+        self.set_target_color("red_2")
+        msg="time_motor,motor_x,motor_y,time_cam,cam_x,cam_y"
+        self.log_data.info( msg)
         p_head = [[19000, 6000], [19000, 18000],\
                   [2000, 18000], [2000, 6000],\
                     [9700, 12000]]
-        for i in range( 20 ):
-            
-            rand_x = random.randrange(2000, 19000, 1)
-            rand_y = random.randrange(6000, 18000, 1)
-#            self.motor.moveHead( p_head[i][0], p_head[i][1] )
-            self.motor.moveHead( rand_x, rand_y )
-            t, x, y = self.getPoint(i)
+
+        for i in range( len(p_head) ):
+            ts = time.clock_gettime_ns(0)
+            self.motor.moveHead( p_head[i][0], p_head[i][1] )
+            _, x, y = self.getPoint(i)
             time.sleep(0.5)
             i = i + 1
             if i > 2: 
                 self.linearRegression()
-            msg = str(x) + "," + str(y) + "," +\
-                str(self.cam.target.pos[0]) + "," +\
-                str(self.cam.target.pos[1])
-            d = {'tns':time.clock_gettime_ns(0)}
-            self.log_data.info( msg, extra = d )
+            msg=""
+            for i in range(5):
+                msg += str(self.point[i]) + ","
+            msg += str(self.point[5])
+            self.log_data.info( msg )
+        
+        for i in range( 128 ):            
+            ts = time.clock_gettime_ns(0)
+            rand_x = random.randrange(2000, 19000, 1)
+            rand_y = random.randrange(6000, 18000, 1)
+            self.motor.moveHead( rand_x, rand_y )
+            _, x, y = self.getPoint(i)
+            self.linearRegression()
+            msg=""
+            for i in range(5):
+                msg += str(self.point[i]) + ","
+            msg += str(self.point[5])
+            self.log_data.info( msg )
 
         self.callibrated = True
 
     def getPoint(self, i):
-        '''Get cam and motor points when header is stopped'''
+        '''Get cam and motor points when header is stopped. And the times when each point has been detected'''
         print( "Getting point " + str(i))
-        self.waitSP()
-        print( "Got SP" )
+        self.waitSP() # wait for motor to get the SP
+        tm = time.clock_gettime_ns(0)
+        print( "Got motor SP" )
         t, x, y = self.motor.getMotorPosition()
-        while self.cam.target.is_moving == True :
-            time.sleep(0.02) #compensacion del retardo de la camara
+        #@TODO: este while ralentiza mucho la hebra
+        while True: # wait cam to stabilize
+            time.sleep(0.0001) # a ver si asi no ralentiza tanto
+            if self.cam.target.is_moving == False:
+                break 
+        tc = time.clock_gettime_ns(0)
         print( "Got cam point" )
         if i < 2:
             self.p[i] = [self.cam.target.pos[0],self.cam.target.pos[1],x,y]
         else:
             self.p = np.append(self.p, [[self.cam.target.pos[0],self.cam.target.pos[1],x,y]], axis=0)
+        self.point = tm, x, y, tc, self.cam.target.pos[0],self.cam.target.pos[1]
         print("reference points:")
         print(self.p)
         return t, x, y
@@ -89,17 +112,16 @@ class Controller:
         self.motor.moveHead( head_point[0], head_point[1] )
         self.waitSP()
         print("Got SP")
-        while self.cam.target.is_moving == True :
-            time.sleep(0.02) #compensacion del retardo de la camara
-#        time.sleep(1)
+        while True:
+            if self.cam.target.is_moving == False :
+                break
         error = str(self.cam.target.pos[0] - x_cam_sp)\
               +", " + str(self.cam.target.pos[1] - y_cam_sp)
         print("error in pixels: " + error)
         msg = str(head_point[0]) + "," + str(head_point[1]) + "," +\
                 str(self.cam.target.pos[0]) + "," + str(self.cam.target.pos[1]) + "," + \
                 error
-        d = {'tns':time.clock_gettime_ns(0)}
-        self.log_info.info( msg, extra = d )
+        self.log_info.info( msg )
 
     def waitSP( self ):
         while True:
