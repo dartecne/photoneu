@@ -13,8 +13,8 @@ def mat_plot(df, reg_df):
     ax1 = fig.add_subplot(111, label = "1",frame_on = False)
     ax2 = fig.add_subplot(111, label = "2",frame_on = False,)
     ax3 = fig.add_subplot(111, label = "3", frame_on = False)
-    ax1.scatter(df["motor_x_norm"],df["motor_y_norm"], color = "DarkBlue", label="motor coordenates", alpha=0.7, marker='.')
-    ax2.scatter(df["cam_x_norm"], df["cam_y_norm"], color = "DarkRed", label="cam coordenates", alpha=0.7,marker='.')
+    ax1.scatter(df["motor_x_norm"],df["motor_y_norm"], color = "DarkBlue", label="motor coordinates", alpha=0.7, marker='.')
+    ax2.scatter(df["cam_x_norm"], df["cam_y_norm"], color = "DarkRed", label="cam coordinates", alpha=0.7,marker='.')
     ax3.scatter(reg_df["motor_x_norm"], reg_df["motor_y_norm"], color = "DarkGreen", label = "model", alpha = 0.3)
     ax1.set_xlim(df["motor_x"].min(), df["motor_x"].max())
     ax1.set_ylim(df["motor_y"].min(), df["motor_y"].max() )
@@ -30,7 +30,7 @@ def mat_plot(df, reg_df):
     ax4.scatter(df["cam_y_norm"], df["motor_y_norm"])
 
 def main(): 
-        name = "data_5.log"
+        name = "data_0.log"
 #    for i in range(0,1):
 #        name = "data_"
 #        name += str(i) + ".log"
@@ -116,10 +116,10 @@ def regression(df_name):
 
     #### plot
     ax1 = df.plot(kind="scatter", x="motor_x_norm", y="motor_y_norm", marker="o", \
-                    color = "DarkBlue", label="motor coordenates", \
+                    color = "DarkBlue", label="motor coordinates", \
                     alpha = 0.6, figsize=(8,10))
     df.plot(kind="scatter", x="cam_x_norm", y="cam_y_norm", marker="*", \
-                    color = "DarkRed", label="cam coordenates", alpha = 0.6, ax= ax1)
+                    color = "DarkRed", label="cam coordinates", alpha = 0.6, ax= ax1)
 
     df.plot(kind="scatter", x="motor_x_linear", y="motor_y_linear", marker="+", \
                     color = "DarkGreen", label="linear regression", alpha = 0.8, ax= ax1)
@@ -144,9 +144,9 @@ def regression(df_name):
     ax1.grid(which='minor', alpha=0.2)
     ax1.grid(which='major', alpha=0.5)
     plt.title("Regression Techniques Comparison")
-    plt.legend(bbox_to_anchor=(0.9, 1.05))
+#    plt.legend(bbox_to_anchor=(0.9, 1.05))
 #    plt.grid(visible=True)
-#    plt.legend(loc='best')
+    plt.legend(loc='center right')
 #    plt.savefig(df_name + "_sklearn_poly_2.png")
     plt.show()
 
