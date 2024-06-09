@@ -1,5 +1,6 @@
 import threading
 import time
+from datetime import datetime
 import numpy as np
 import cv2 as cv
 import random
@@ -26,7 +27,8 @@ class Controller:
         self.log_data.setLevel(logging.INFO)        
         formater= logging.Formatter('%(message)s')
         info_fh = logging.FileHandler('info.log')
-        data_fh = logging.FileHandler('data.log')
+        file_name = datetime.now().strftime("%Y_%m_%d_%I_%M_%S") + ".log"
+        data_fh = logging.FileHandler(file_name)
         info_fh.setFormatter( formater )
         data_fh.setFormatter( formater )
         self.log_info.addHandler( info_fh )
@@ -65,7 +67,7 @@ class Controller:
             _, x, y = self.getPoint(i)
             self.linearRegression()
             msg=""
-            for i in range(5):
+            for i in range(5): #self.point = tm, x, y, tc, self.cam.target.pos[0],self.cam.target.pos[1]
                 msg += str(self.point[i]) + ","
             msg += str(self.point[5])
             self.log_data.info( msg )
