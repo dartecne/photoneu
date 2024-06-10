@@ -31,7 +31,7 @@ def mat_plot(df, reg_df):
     ax4.scatter(df["cam_y_norm"], df["motor_y_norm"])
 
 def main(): 
-        name = "2024_06_10_02_24_06.log"
+        name = "2024_06_10_05_20_40.log"
 #    for i in range(0,1):
 #        name = "data_"
 #        name += str(i) + ".log"

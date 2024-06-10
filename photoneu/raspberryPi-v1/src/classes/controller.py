@@ -55,7 +55,7 @@ class Controller:
             ts = time.clock_gettime_ns(0)
             self.motor.moveHead( p_head[i][0], p_head[i][1] )
             _, x, y = self.getPoint(i)
-            time.sleep(1)
+#            time.sleep(2)
             i = i + 1
             if i > 2: 
                 self.linearRegression()
@@ -74,9 +74,15 @@ class Controller:
         tm = time.clock_gettime_ns(0)
         print( "Got motor SP" )
         t, x, y = self.motor.getMotorPosition()
+        #Ocurre que aunque el motor haya llegado puede que la imagen todavía esté quieta
+        while True: # Espera a que la imagen se mueva
+            if self.cam.target.is_moving == True:
+                break 
         #@TODO: este while ralentiza mucho la hebra
         while True: # wait cam to stabilize
             time.sleep(0.0001) # a ver si asi no ralentiza tanto
+#            print("Controller cam_pos: " + str(self.cam.target.pos[0])\
+#                  + ", " + str(self.cam.target.pos[1]))
             if self.cam.target.is_moving == False:
                 break 
         tc = time.clock_gettime_ns(0)
@@ -112,7 +118,7 @@ class Controller:
                 break
         error = str(self.cam.target.pos[0] - x_cam_sp)\
               +", " + str(self.cam.target.pos[1] - y_cam_sp)
-        print("error in pixels: " + error)
+        print("eraspberryPirror in pixels: " + error)
         msg = str(head_point[0]) + "," + str(head_point[1]) + "," +\
                 str(self.cam.target.pos[0]) + "," + str(self.cam.target.pos[1]) + "," + \
                 error
