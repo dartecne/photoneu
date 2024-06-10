@@ -29,9 +29,9 @@ long curMicros;
 long prevStepMicros = 0;
 
 //int yMax = 1540;  // valores aproximados obtenidos después de la calibración
-int yMax = 24272;  // resolucion de 1/16
+int yMax = 25000;//24272;  // resolucion de 1/16
 //int xMax = 1250;  
-int xMax = 19430;  // 19431 con una resolucion de 1/16
+int xMax = 23000;  // 19431 con una resolucion de 1/16
 int xPos = xMax/2, yPos = yMax/2;
 int xSP = xMax/2, ySP = yMax/2; // Set Point, donde debe ir el cabezal
 bool stop = true;
