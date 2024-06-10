@@ -102,7 +102,9 @@ class Target:
     def update( self ):
 #        print( "Target::head pos = " + str(self.pos) )
 #        print( "Target::head pos_old = " + str(self.pos_old) )
-        prediction = self.tracker.update( self )  
+        self.pos[0] = self.measured_pos[0]
+        self.pos[1] = self.measured_pos[1]
+#        prediction = self.tracker.update( self )  
         self.pos[0] = max(self.pos[0], self.pos_limits[0])
         self.pos[0] = min(self.pos[0], self.pos_limits[1])
         self.pos[1] = max(self.pos[1], self.pos_limits[2])
@@ -131,8 +133,6 @@ class Target:
 #
         self.pos_old = np.copy( self.pos )
         self.is_moving_old = self.is_moving
-
-        return prediction
 
 class CamHandler:
     def __init__( self ):
@@ -176,7 +176,7 @@ class CamHandler:
             frame_threshold = self.filterColor( hsv, self.target_color)
             fc = self.findContours(frame, frame_threshold)
             self.matchTargets(fc)
-            prediction = self.target.update()
+            self.target.update()
 
             x, y, radius = self.target.measured_pos[0], self.target.measured_pos[1],\
                         self.target.radius  

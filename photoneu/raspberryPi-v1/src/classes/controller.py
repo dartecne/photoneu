@@ -41,15 +41,21 @@ class Controller:
         self.set_target_color("red_2")
         msg="time_motor,motor_x,motor_y,time_cam,cam_x,cam_y"
         self.log_data.info( msg)
-        p_head = [[19000, 6000], [19000, 18000],\
-                  [2000, 18000], [2000, 6000],\
-                    [9700, 12000]]
+        x_min, x_max = 1000, 19000
+        y_min, y_max = 6000, 19000
+        step = 1000
 
-        for i in range( len(p_head) ):
+#        p_head = [[19000, 6000], [19000, 18000],[2000, 18000], [2000, 6000],[9700, 12000]]
+#        x = np.linspace(x_min,x_max, n, dtype= int)
+#        y = np.linspace(y_min,y_max, n, dtype = int)
+#        p_head = np.concatenate([x,y]).reshape(2,n)
+        p_head = np.mgrid[x_min:x_max:step, y_min:y_max:step].reshape(2,-1).T
+        
+        for i in range(len(p_head)) :
             ts = time.clock_gettime_ns(0)
             self.motor.moveHead( p_head[i][0], p_head[i][1] )
             _, x, y = self.getPoint(i)
-            time.sleep(0.5)
+            time.sleep(1)
             i = i + 1
             if i > 2: 
                 self.linearRegression()
@@ -59,19 +65,6 @@ class Controller:
             msg += str(self.point[5])
             self.log_data.info( msg )
         
-        for i in range( 128 ):            
-            ts = time.clock_gettime_ns(0)
-            rand_x = random.randrange(2000, 19000, 1)
-            rand_y = random.randrange(6000, 18000, 1)
-            self.motor.moveHead( rand_x, rand_y )
-            _, x, y = self.getPoint(i)
-            self.linearRegression()
-            msg=""
-            for i in range(5): #self.point = tm, x, y, tc, self.cam.target.pos[0],self.cam.target.pos[1]
-                msg += str(self.point[i]) + ","
-            msg += str(self.point[5])
-            self.log_data.info( msg )
-
         self.callibrated = True
 
     def getPoint(self, i):

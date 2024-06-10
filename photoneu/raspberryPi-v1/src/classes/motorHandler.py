@@ -7,7 +7,9 @@ class MotorHandler:
         self.port = '/dev/ttyACM0'
         self.baudrate = 230400
         self.x = 0
+        self.x_max = 22000
         self.y = 0
+        self.y_max = 24000
         while True:
             try:
                 self.ser = serial.Serial( self.port, self.baudrate )
@@ -37,8 +39,8 @@ class MotorHandler:
     def moveHead( self, x_head, y_head ):
         x_head = max(0,x_head)
         y_head = max(0,y_head)
-        x_head = min(19430,x_head)
-        y_head = min(24272,y_head)
+        x_head = min(self.x_max,x_head)
+        y_head = min(self.y_max,y_head)
         print( "moving to: " + str(x_head) + str(", ") + str(y_head) )
         msg = "X" + str(int(x_head)).zfill(5) + "Y" + str(int(y_head)).zfill(5) 
         self.sendCode(msg)

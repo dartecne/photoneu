@@ -3,6 +3,7 @@ import pandas as pd
 import time
 from scipy  import stats
 import matplotlib.pyplot as plt
+import sklearn as skl
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 import statsmodels.api as sm
@@ -30,7 +31,7 @@ def mat_plot(df, reg_df):
     ax4.scatter(df["cam_y_norm"], df["motor_y_norm"])
 
 def main(): 
-        name = "data_0.log"
+        name = "2024_06_10_02_24_06.log"
 #    for i in range(0,1):
 #        name = "data_"
 #        name += str(i) + ".log"
