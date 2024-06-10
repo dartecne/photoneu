@@ -41,9 +41,9 @@ class Controller:
         self.set_target_color("red_2")
         msg="time_motor,motor_x,motor_y,time_cam,cam_x,cam_y"
         self.log_data.info( msg)
-        x_min, x_max = 1000, 19000
-        y_min, y_max = 6000, 19000
-        step = 1000
+        x_min, x_max = 2000, 19000
+        y_min, y_max = 7000, 18000
+        step = 2000
 
 #        p_head = [[19000, 6000], [19000, 18000],[2000, 18000], [2000, 6000],[9700, 12000]]
 #        x = np.linspace(x_min,x_max, n, dtype= int)
