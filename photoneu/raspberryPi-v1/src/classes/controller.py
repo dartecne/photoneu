@@ -1,5 +1,6 @@
 import threading
 import time
+import random
 from datetime import datetime
 import numpy as np
 import cv2 as cv
@@ -50,8 +51,9 @@ class Controller:
 #        y = np.linspace(y_min,y_max, n, dtype = int)
 #        p_head = np.concatenate([x,y]).reshape(2,n)
         p_head = np.mgrid[x_min:x_max:step, y_min:y_max:step].reshape(2,-1).T
-        
-        for i in range(len(p_head)) :
+        indexes = random.sample(range(len(p_head)), len(p_head))
+#        for i in range(len(p_head)) :
+        for i in indexes :
             ts = time.clock_gettime_ns(0)
             self.motor.moveHead( p_head[i][0], p_head[i][1] )
             _, x, y = self.getPoint(i)
