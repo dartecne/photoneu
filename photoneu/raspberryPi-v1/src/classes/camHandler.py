@@ -192,7 +192,7 @@ class CamHandler:
             
             if self.target.is_tracked == True:
                 cv.circle(frame,(x,y),radius,(0,255,100),1)
-                cv.putText(frame,str(x) + "," + str(y),(x+20,y-20), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)
+                cv.putText(frame,str(x) + "," + str(y),(x,y-40), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)
                 cv.putText(frame,str(self.target.area),(x+20,y + 20), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)
             
             (x, y) = (int(self.target.pos[0]), int(self.target.pos[1]))
