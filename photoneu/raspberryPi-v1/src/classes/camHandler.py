@@ -160,6 +160,8 @@ class CamHandler:
         cv.createTrackbar( self.high_V_name, self.window_detection_name , \
                           self.high_V, self.max_value, self.on_high_V_thresh_trackbar )
         self.stop_thread = False
+        print( "CamHandler::ctor" )
+        print( "CamHandler::beginning thread" )
         self.control_thread = threading.Thread( target = self.controlLoop, args=(1,) )
         self.control_thread.start()
 
