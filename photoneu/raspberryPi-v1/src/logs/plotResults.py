@@ -31,7 +31,7 @@ def mat_plot(df, reg_df):
     ax4.scatter(df["cam_y_norm"], df["motor_y_norm"])
 
 def main(): 
-        name = "2024_06_10_05_20_40.log"
+        name = "2024_07_30_03_51_05.log"
 #    for i in range(0,1):
 #        name = "data_"
 #        name += str(i) + ".log"
@@ -145,9 +145,9 @@ def regression(df_name):
     ax1.grid(which='minor', alpha=0.2)
     ax1.grid(which='major', alpha=0.5)
     plt.title("Regression Techniques Comparison")
-#    plt.legend(bbox_to_anchor=(0.9, 1.05))
+    plt.legend(bbox_to_anchor=(1.15, 0.2))
 #    plt.grid(visible=True)
-    plt.legend(loc='center right')
+#    plt.legend(loc='center right')
 #    plt.savefig(df_name + "_sklearn_poly_2.png")
     plt.show()
 
