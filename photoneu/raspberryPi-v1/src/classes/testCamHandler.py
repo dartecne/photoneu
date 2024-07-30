@@ -5,7 +5,7 @@ import time
 from camHandler import CamHandler
 
 cam = CamHandler()
-
-cam.control_thread.join()
+#cam.controlLoop(1111)
+#cam.control_thread.join()
 #while True:
 #    time.sleep(0.5)
