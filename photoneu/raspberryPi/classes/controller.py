@@ -12,15 +12,19 @@ from camHandler import CamHandler
 from motorHandler import MotorHandler
 
 class Controller:
+    """
+    Controlador principal. Instancia un manejador de la cámara y otro de los motores.
+    """
+
     def __init__(self):
         self.cam = CamHandler()
-        self.cam.init()
+        self.cam.init() # inicia la hebra de deteccion de targets por color
         self.motor = MotorHandler()
         self.motor_steps_thres = 10 # diferencia de pasos para que se envie comando de movimiento al motor
         self.p = np.zeros((2,4)) # points for linear regresion
         self.callibrated = False
-        self.A = [-53.82, 54]
-        self.B = [22008, 3665]
+        self.A = [-24, 56] #[-53.82, 54]
+        self.B = [12511, -1107] #[22008, 3665]
         self.r = [1.1, 1.1] #coeff de correlacion 
         self.point = np.array(6) # t_motor, point_motor, t_cam, point_cam 
 
@@ -36,6 +40,36 @@ class Controller:
         data_fh.setFormatter( formater )
         self.log_info.addHandler( info_fh )
         self.log_data.addHandler( data_fh )
+
+    def applyTreatment( self, id ):
+        msg="time_stamp,target_id,motor_x,motor_y,cam_x,cam_y,duration"
+        self.log_data.info( msg) # escribe cabecera
+        t = self.cam.targets[id]
+        while t.pbm_time < t.pbm_total_time:
+            if (t.is_moving == False) & (t.is_tracked):
+                x = t.pos[0]
+                y = t.pos[1]
+                head_point = self.moveMotorPixels( x, y )
+                time.sleep(1)
+                t0 = time.time()
+                ts = 0
+                self.pbmON()
+                msg = str(t0) + "," + str(id) + "," + str(head_point[0]) + "," + str(head_point[1]) + "," + str(x) + "," + str(y) + ","        
+                while t.is_moving == False:
+                    t1 = time.time()
+                    ts += t1 - t0
+                    t0 = time.time()
+                    time.sleep(0.01)
+                t.pbm_time += ts
+                msg += str(t.pbm_time)   
+                self.pbmOFF()
+        print("END of PBM for target " + str(id))
+
+    def pbmON(self):
+        print("PBM - ON")
+
+    def pbmOFF(self):
+        print("PBM - OFF")
 
     def set_target_color(self, color):
         self.cam.targets[0].color_id = color
@@ -152,6 +186,9 @@ class Controller:
         return tmotor, tcam1, tcam2, t, x, y
 
     def moveMotorPixels( self, x_cam_sp, y_cam_sp ):
+        """
+        Función principal de movimiento del cabezal 
+        """
         if self.callibrated == False:
             print("Device not callibrated")
             return -1
@@ -168,17 +205,20 @@ class Controller:
         self.motor.moveHead( head_point[0], head_point[1] )
         self.waitSP()
         print("Got SP")
-        while True:
-            if self.cam.targets[0].is_moving == False :
-                break
-        error = str(self.cam.targets[0].pos[0] - x_cam_sp)\
-              +", " + str(self.cam.targets[0].pos[1] - y_cam_sp)
-        print("eraspberryPirror in pixels: " + error)
-        msg = str(head_point[0]) + "," + str(head_point[1]) + "," +\
-                str(self.cam.targets[0].pos[0]) + "," + str(self.cam.targets[0].pos[1]) + "," + \
-                error
-        self.log_info.info( msg )
+        return head_point
 
+##Seguimiento del cabezal por CV
+#        while True:
+#            if self.cam.targets[0].is_moving == False :
+#                break
+#        error = str(self.cam.targets[0].pos[0] - x_cam_sp)\
+#              +", " + str(self.cam.targets[0].pos[1] - y_cam_sp)
+#        print("Vision error in pixels: " + error)
+#        msg = str(head_point[0]) + "," + str(head_point[1]) + "," +\
+#                str(self.cam.targets[0].pos[0]) + "," + str(self.cam.targets[0].pos[1]) + "," + \
+#                error
+#        self.log_info.info( msg )
+#
     def waitSP( self ):
         while True:
             t, x_head_error, y_head_error = self.motor.getSPerror()

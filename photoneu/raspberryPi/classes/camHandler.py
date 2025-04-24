@@ -68,6 +68,9 @@ class Tracker():
 
 
 class Target:
+    """
+    Respresenta un blob detectado como posible raton etiquetado con un color
+    """
     def __init__(self): 
         self.color_id = ""
 #        self.real_color = np.array([110, 100, 100])  #in HSV
@@ -89,6 +92,8 @@ class Target:
         self.roi = None
         self.tracker = Tracker(0, (200,300,20,20))
         self.n_stopped_frames = 0
+        self.pbm_total_time = 20 # tiempo total de tratamiento PBM que se debe aplicar
+        self.pbm_time = 0 # tiempo parcial aplicado
 
 #        self.track_window = track_window
 #        self.term_crit = (cv.TERM_CRITERIA_COUNT | cv.TERM_CRITERIA_EPS, 10, 1)
@@ -98,6 +103,9 @@ class Target:
 #        self.roi_hist = cv.normalize(roi_hist, roi_hist, 0, 255, cv.NORM_MINMAX)
         
     def update( self ):
+        """
+        Evalúa si el target se está moviendo o no. Actualiza los datos con el filtro de Kalman
+        """
 #        print( "Target::head pos = " + str(self.pos) )
 #        print( "Target::head pos_old = " + str(self.pos_old) )
         self.pos[0] = self.measured_pos[0]
@@ -133,6 +141,10 @@ class Target:
         self.is_moving_old = self.is_moving
 
 class CamHandler:
+    """
+    Clase manejadora de la cámara.
+    Instancia 4 targets (4 posibles ratones) de distintos colores
+    """
     def __init__( self ):
         self.targets = [] #Target()
         self.window_capture_name = 'Video Capture'
@@ -148,15 +160,19 @@ class CamHandler:
 #        self.color_h = {'red':[0,18],'orange':[5,18],'yellow':[22,37],'green':[50,83],'blue':[105,133],'purple':[115,165],'red_2':[160,180]}  #Here is the range of H in the HSV color space represented by the color
 #        self.color_s = {'red':[80,255], 'red_2':[20,255],'yellow':[22,255],'green':[42,255],'blue':[122,255]}  
 #        self.color_v = {'red':[60,130],'red_2':[60,255],'yellow':[22,255],'green':[60,255],'blue':[60,255]}
-        self.color_h = {'red':[0,30],'green':[50,83],'blue':[87,111],'dark_blue':[114,165]}  #Here is the range of H in the HSV color space represented by the color
-        self.color_s = {'red':[185,255],'green':[183,255],'blue':[130,255],'dark_blue':[140,255]}  
+#       Estos datos pueden calibrarse utilizando test_inRange.py
+        self.color_h = {'red':[150,180],'green':[60,90],'blue':[87,111],'dark_blue':[114,165]}  #Here is the range of H in the HSV color space represented by the color
+        self.color_s = {'red':[26,255],'green':[115,255],'blue':[130,255],'dark_blue':[140,255]}  
         self.color_v = {'red':[88,255],'green':[50,255],'blue':[68,255],'dark_blue':[93,255]}
-#        self.cap = cv.VideoCapture( 0 )
+        self.cap = cv.VideoCapture( 0 )
         self.backSub = cv.createBackgroundSubtractorMOG2()
         self.fgMask = None
         print( "CamHandler::ctor" )
         
     def init(self):
+        """
+        Crea una hebra de control en bucle cerrado 
+        """
         t1 = Target()
         t1.is_tracked = False
         t1.color_id = "red"
@@ -172,8 +188,8 @@ class CamHandler:
         t4.mean_color = (255,100 ,100)
         self.targets.append(t1)
         self.targets.append(t2)
-        self.targets.append(t3)
-        self.targets.append(t4)
+#        self.targets.append(t3)
+#        self.targets.append(t4)
 #        cv.namedWindow( self.window_capture_name )
 #        cv.namedWindow( self.window_detection_name )
 #        cv.createTrackbar( self.low_V_name, self.window_detection_name , \
@@ -192,12 +208,10 @@ class CamHandler:
         exit()
 
     def controlLoop( self, name ):
-#        SEGMENT_COLORS = [(0,255,0),(0,255,255),(255,255,0),(255,0,255)]
         while True:
             t0 = cv.getTickCount()
             i = 0
             frame, hsv, gray = self.getImage()
-#            cv.imshow("Frame", frame)
             t1 = cv.getTickCount()
             
             for target in self.targets:
@@ -213,14 +227,13 @@ class CamHandler:
                 x, y, radius = target.measured_pos[0], target.measured_pos[1],\
                         target.radius  
 
-                cv.putText( frame, str(target.color_id), (x+20, y), cv.FONT_HERSHEY_SIMPLEX, 0.5,target.mean_color,1)
-                
-                cv.putText( frame,"v_head = " + str(target.vel_mod),(20, 40 + 20 * i), \
+                mice_label = target.color_id + "_mice v = "
+                cv.putText( frame, mice_label + str(target.vel_mod),(40, 40 + 20 * i), \
                            cv.FONT_HERSHEY_SIMPLEX, 0.5,target.mean_color,1)
                 color = (0,100,255)
                 if(target.is_tracked): 
                     color = target.mean_color   #(100,255,0)
-                cv.putText( frame,"tracked: " + str(target.is_tracked),(150,40), \
+                cv.putText( frame,"tracked: " + str(target.is_tracked),(200,40 + 20*i), \
                            cv.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
             
                 if target.is_tracked == True:
@@ -232,10 +245,9 @@ class CamHandler:
             
                 (x, y) = (int(target.pos[0]), int(target.pos[1]))
                 cv.circle(frame, (x, y), 5, (255, 255, 0), 1) # circulo central del F. Kalman
-                cv.putText(frame,str(x) + "," + str(y),(x,y+5), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)
+#                cv.putText(frame,str(x) + "," + str(y),(x,y+5), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)
                 i += 1
                 self.showImage( frame, frame_threshold)
-                print(i)
                 t5 = cv.getTickCount()
                 t_read = (t1 - t0) / cv.getTickFrequency() # t-leer la imagen
                 t_filter = (t2 - t1_1) / cv.getTickFrequency() # t - filtro color
@@ -256,16 +268,16 @@ class CamHandler:
         x_crop_max = 0#40
         y_crop_min = 140
         y_crop_max = 140
-        #ret, frame = self.cap.read()
-        #frame = frame[x_crop_min:(frame.shape[0]-x_crop_max), \
-        #              y_crop_min:(frame.shape[1]-y_crop_max)]       
-        frame = cv.imread(self.img_path) 
+        ret, frame = self.cap.read()
+        #frame = cv.imread(self.img_path) 
         if frame is None:
             print( "No frame. Exit..." )
             return -1
-        print(frame.shape)
-#        frame = cv.medianBlur(frame, 5)
-#        frame = cv.blur(frame, (5,5))
+        frame = frame[x_crop_min:(frame.shape[0]-x_crop_max), \
+                      y_crop_min:(frame.shape[1]-y_crop_max)]       
+#        print(frame.shape) # (480, 360, 3)
+        frame = cv.medianBlur(frame, 5)
+        frame = cv.blur(frame, (5,5))
         #denoising, no solo no funciona sino que genera mucho retardo
 #        if len(self.frames) < 5:
 #            self.frames.append(frame)
@@ -280,7 +292,6 @@ class CamHandler:
         return frame, hsv, gray
     
     def filterColor( self, hsv, color ):
-        print(color)
         mask = cv.inRange( hsv,( self.color_h[color][0], \
                                 self.color_s[color][0], \
                                 self.color_v[color][0]), (self.color_h[color][1], self.color_s[color][1], self.color_v[color][1]))
@@ -293,10 +304,10 @@ class CamHandler:
         kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(3,3))
 #        kernel = np.ones((6,6),np.uint8) 
         frame_threshold = cv.morphologyEx( mask, cv.MORPH_OPEN, kernel, iterations = 1 )  
+        cv.imshow(color, frame_threshold)
         return frame_threshold
 
     def showImage(self, frame, frame_threshold):
-        print("show")
         cv.imshow( self.window_detection_name, frame_threshold )
         cv.imshow( self.window_capture_name, frame )
 #        cv.imshow( "Filtro fondo", self.fgMask )
@@ -311,28 +322,31 @@ class CamHandler:
         contours, hier = cv.findContours( frame_threshold,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE ) 
         filter_contours = [] 
         num_contours = len(contours) # Count the number of contours
-        print("nc: " + str(num_contours))
         if num_contours > 0: 
             for c in contours:    # Traverse all contours
                 approx = cv.approxPolyDP( 
                     c, 0.01 * cv.arcLength(c, True), True)
-    #      print(approx)
                 area = cv.contourArea( c )
-                print(area)
 #                if (area > 60) & (area < 1400) :
-                if (area > 60) & (area < 140) :
+                if (area > 300) & (area < 1400) :
                     filter_contours.append(c)
+                else:
+                    print("Contour area out of bonds:" + str(area))
+#                cv.putText(frame, str(area), (20,100), cv.FONT_HERSHEY_SIMPLEX, 0.5,(200,255,0),1)
                 cv.drawContours(frame, contours, -1, (200,255,0), 1)
         return filter_contours
 
     def matchTarget( self, contours, target):
+        """
+        Actualiza los valores de los targets según los blobls detectados de colores 
+        """
         #@TODO: contour is target? yes, update target; no, create new target.
 #        print(target.color_id)
         if len(contours) == 0:
             target.is_tracked = False
         else:
             if len(contours) > 1:
-                print("matchTarget:: WARN: found more than 1 countor in color!")
+                print("matchTarget:: WARN: found more than 1 contour for same color!")
             c = contours[0]
             target.is_tracked = True
             M = cv.moments(c) 
