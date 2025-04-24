@@ -186,7 +186,7 @@ class CamHandler:
         t4 = Target()
         t4.color_id = "dark_blue"
         t4.mean_color = (255,100 ,100)
-        self.targets.append(t1)
+#        self.targets.append(t1)
         self.targets.append(t2)
 #        self.targets.append(t3)
 #        self.targets.append(t4)
@@ -304,11 +304,10 @@ class CamHandler:
         kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(3,3))
 #        kernel = np.ones((6,6),np.uint8) 
         frame_threshold = cv.morphologyEx( mask, cv.MORPH_OPEN, kernel, iterations = 1 )  
-        cv.imshow(color, frame_threshold)
         return frame_threshold
 
     def showImage(self, frame, frame_threshold):
-        cv.imshow( self.window_detection_name, frame_threshold )
+#        cv.imshow( self.window_detection_name, frame_threshold )
         cv.imshow( self.window_capture_name, frame )
 #        cv.imshow( "Filtro fondo", self.fgMask )
         key = cv.waitKey( 30 )

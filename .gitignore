@@ -3,3 +3,4 @@ dataset
 DeepLab-TriMice
 src
 transfer_learning_masterIA
+*.pyc

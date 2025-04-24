@@ -17,7 +17,7 @@ controller.callibrated = True
 controller.set_target_color("green")
 
 while True:
-    x = controller.cam.targets[1].pos[0]
-    y = controller.cam.targets[1].pos[1]
+    x = controller.cam.targets[0].pos[0]
+    y = controller.cam.targets[0].pos[1]
     controller.moveMotorPixels( x, y )
     time.sleep(0.3)
