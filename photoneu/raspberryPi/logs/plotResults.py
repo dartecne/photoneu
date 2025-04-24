@@ -9,6 +9,7 @@ import sklearn as skl
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 import statsmodels.api as sm
+import pickle# for saving/loading models
 
  
 def mat_plot(df, reg_df):
@@ -38,8 +39,11 @@ def main():
 #        name = "data_"
 #        name += str(i) + ".log"
         df = readDataFrame(name)
-        regression( df )
-        plotAndSave(df, name)
+#        regression( df )
+#        evalRegression(df)
+#        plotAndSave(df, name)
+#        printModels(df)
+
 #        df = pd.read_csv(name)
 #        df = pd.concat([df, df])
 
@@ -50,7 +54,8 @@ def readDataFrame( df_name ):
     for col in df.columns:
         df[col+str("_norm")] = (df[col] - df[col].min())/\
             (df[col].abs().max()- df[col].min())
-    
+        print("min in col " + str(col) + ": " + str(df[col].min))
+        print("max in col " + str(col) + ": " + str(df[col].max))
     df["cam_x_norm"] = 1 - df["cam_x_norm"]
     return df
 
@@ -93,24 +98,42 @@ def plotAndSave( df, df_name ):
     plt.show()
     df.to_csv(df_name + "_models.csv")
     
-def regression(df):
+def evalRegression(df):
+    linear_reg_x = pickle.load(open("linear_x.sav", 'rb'))
+    linear_reg_y = pickle.load(open("linear_x.sav", 'rb'))
     X = df[["cam_x_norm", "cam_y_norm"]]
-   # linear polynomial regression    
+    df["motor_x_linear_eval"] = linear_reg_x.predict(X)
+    df["motor_y_linear_eval"] = linear_reg_y.predict(X)
+    df["motor_x_eval_linear_err"] =df["motor_x_linear"] - df["motor_x_linear_eval"]
+    df["motor_y_eval_linear_err"] =df["motor_y_linear"] - df["motor_y_linear_eval"]
+    print(df["motor_x_linear"])
+    print(df["motor_x_linear_eval"])
+    
+def regression(df):
+    ''' Regression from cam coordinates to motor coordinates
+    '''
+    X = df[["cam_x_norm", "cam_y_norm"]]
+
+    #linear regression model 
+    linear_reg_x = LinearRegression()
+    linear_reg_x.fit(X,df["motor_x_norm"]) #X, linear; X_, polynomial
+    linear_reg_y = LinearRegression()
+    linear_reg_y.fit(X,df["motor_y_norm"])
+
+    pickle.dump(linear_reg_x, open("linear_x.sav", 'wb'))
+    pickle.dump(linear_reg_y, open("linear_y.sav", 'wb'))
+
+    # linear polynomial regression model
     X_ = PolynomialFeatures(degree=3, include_bias=False).fit_transform(X)
-   
-   # linear regression
     poly_reg_x = LinearRegression()
     poly_reg_x.fit(X_,df["motor_x_norm"]) #X, linear; X_, polynomial
     poly_reg_y = LinearRegression()
     poly_reg_y.fit(X_,df["motor_y_norm"])
 
-    linear_reg_x = LinearRegression()
-    linear_reg_x.fit(X,df["motor_x_norm"]) #X, linear; X_, polynomial
-    linear_reg_y = LinearRegression()
-    linear_reg_y.fit(X,df["motor_y_norm"])
-    
-   # linear regression 1D
-    
+    pickle.dump(poly_reg_x, open("poly_x.sav", 'wb'))
+    pickle.dump(poly_reg_y, open("poly_y.sav", 'wb'))
+
+   # linear regression 1D statistics (sm lib)
     slope_x, intercept_x, r_x, p_x, str_err_x = stats.linregress(df["cam_x_norm"],df["motor_x_norm"])   
     slope_y, intercept_y, r_y, p_y, str_err_y = stats.linregress(df["cam_y_norm"],df["motor_y_norm"])   
     def linear_func_x(x):
@@ -132,43 +155,46 @@ def regression(df):
     df["motor_x_stats_err"] =df["motor_x_stats"] - df["motor_x_norm"]
     df["motor_y_stats_err"] =df["motor_y_stats"] - df["motor_y_norm"]
 
-    print(df)   
-    print("Linear Regression")
-    model = sm.OLS(df["motor_x_linear"], X).fit()
-    print(model.params)
-    print(model.rsquared)
-#    print(model.bse) # standard errors of the parameters estimates
-    model = sm.OLS(df["motor_y_linear"], X).fit()
-    print(model.params)
-    print(model.rsquared)
-#    print(model.bse) # standard errors of the parameters estimates
-    print("Polynomial Regression")
-    model = sm.OLS(df["motor_x_poly"], X_).fit()
-    print(model.params)
-    print(model.rsquared)
-#    print(model.bse) # standard errors of the parameters estimates
-    model = sm.OLS(df["motor_y_poly"], X_).fit()
-    print(model.params)
-    print(model.rsquared)
-#    print(model.bse) # standard errors of the parameters estimates
-    
-    print("LR_x sem = {}".format(df["motor_x_linear_err"].sem()))   # unbiased standard error of the mean over requested axis
-    print("LR_y sem = {}".format(df["motor_y_linear_err"].sem()))
-    print("PR_x sem = {}".format(df["motor_x_poly_err"].sem()))
-    print("PR_y sem = {}".format(df["motor_y_poly_err"].sem()))
-    print("stats_x sem = {}".format(df["motor_x_stats_err"].sem()))
-    print("stats_y sem = {}".format(df["motor_y_stats_err"].sem()))
+#    print("Models from statistic sm library:")
+#    print("Linear Regression")
+#    model = sm.OLS(df["motor_x_linear"], X).fit()
+#    print(model.params)
+#    print(model.rsquared)
+##    print(model.bse) # standard errors of the parameters estimates
+#    model = sm.OLS(df["motor_y_linear"], X).fit()
+#    print(model.params)
+#    print(model.rsquared)
+##    print(model.bse) # standard errors of the parameters estimates
+#    print("Polynomial Regression")
+#    model = sm.OLS(df["motor_x_poly"], X_).fit()
+#    print(model.params)
+#    print(model.rsquared)
+##    print(model.bse) # standard errors of the parameters estimates
+#    model = sm.OLS(df["motor_y_poly"], X_).fit()
+#    print(model.params)
+#    print(model.rsquared)
+##    print(model.bse) # standard errors of the parameters estimates
+#    print("slope_x = " + str(slope_x))
+#    print("slope_y = " + str(slope_y))
+#    print("intercept_x = " + str(intercept_x))
+#    print("intercept_y = " + str(intercept_y))
+#    print("Stats LR_x score = {}".format(r_x))
+#    print("Stats LR_y score = {}".format(r_y))
+#
+def printModels(df):
+    print(df)       
+    print("LR_x error sem = {}".format(df["motor_x_linear_err"].sem()))   # unbiased standard error of the mean over requested axis
+    print("LR_y error sem = {}".format(df["motor_y_linear_err"].sem()))
+    print("PR_x error sem = {}".format(df["motor_x_poly_err"].sem()))
+    print("PR_y error sem = {}".format(df["motor_y_poly_err"].sem()))
+    print("stats_x error sem = {}".format(df["motor_x_stats_err"].sem()))
+    print("stats_y error sem = {}".format(df["motor_y_stats_err"].sem()))
 #    print("LR_x score = {}".format(linear_reg_x.score(X, df["motor_x_linear"])))
 #    print("LR_y score = {}".format(linear_reg_y.score(X, df["motor_y_linear"])))
 #    print("PR_x score = {}".format(poly_reg_x.score(X_, df["motor_x_poly"])))
 #    print("PR_y score = {}".format(poly_reg_y.score(X_, df["motor_y_poly"])))
-
-    print("slope_x = " + str(slope_x))
-    print("slope_y = " + str(slope_y))
-    print("intercept_x = " + str(intercept_x))
-    print("intercept_y = " + str(intercept_y))
-    print("Stats LR_x score = {}".format(r_x))
-    print("Stats LR_y score = {}".format(r_y))
+    print("motor_x_eval_linear_err = {}".format(df["motor_x_eval_linear_err"].mean()))
+    print("motor_y_eval_linear_err = {}".format(df["motor_y_eval_linear_err"].mean()))
 
     
 if __name__ == '__main__':

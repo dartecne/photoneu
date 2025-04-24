@@ -7,6 +7,10 @@ import numpy as np
 import cv2 as cv
 import random
 import logging
+import sklearn as skl
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+import pickle 
 
 from camHandler import CamHandler
 from motorHandler import MotorHandler
@@ -27,6 +31,8 @@ class Controller:
         self.B = [12511, -1107] #[22008, 3665]
         self.r = [1.1, 1.1] #coeff de correlacion 
         self.point = np.array(6) # t_motor, point_motor, t_cam, point_cam 
+        self.x_model = pickle.load(open("../logs/linear_x.sav", 'rb')) 
+        self.y_model = pickle.load(open("../logs/linear_y.sav", 'rb')) 
 
         self.log_info = logging.getLogger("info")
         self.log_data = logging.getLogger("data")
@@ -196,8 +202,8 @@ class Controller:
             ( y_cam_sp < 0 ) :
             return -2
         head_point = self.pixels2steps([x_cam_sp, y_cam_sp])
-        if (head_point[0] - self.motor.x) < self.motor_steps_thres & \
-            (head_point[1] - self.motor.y) < self.motor_steps_thres :
+        if abs(head_point[0] - self.motor.x) < self.motor_steps_thres & \
+            abs(head_point[1] - self.motor.y) < self.motor_steps_thres :
             return -3
 
         print("moving to pixels: " + str(x_cam_sp) + "," + str(y_cam_sp))
@@ -228,6 +234,37 @@ class Controller:
                     (y_head_error == 0) :
                         self.motor.getMotorPosition() # ademas de get hace un update
                         break
+    def map_value(self, x, in_min, in_max, out_min, out_max):
+        y = (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+        return y
+
+    def pixels2steps( self, point ):
+        """
+        Recibe un punto en pixeles y devuelve los steps para llegar a ese punto
+        """
+        # según logs/dataAnalysis.ipynb
+        motor_x_min, motor_x_max = 1500, 15500
+        motor_y_min, motor_y_max = 1500, 21500
+
+        cam_x_min, cam_x_max = 68, 337
+        cam_y_min, cam_y_max = 36, 414
+        print(point)
+        point[0] = self.map_value(point[0], cam_x_min, cam_x_max, 1.0, 0.0 )
+        point[1] = self.map_value(point[1], cam_y_min, cam_y_max, 0.0, 1.0 )
+        print(point)
+        motor_point = [-1.0,-1.0] 
+        if self.callibrated:
+            x_out = self.x_model.predict( [[point[0], point[1]]])
+            y_out = self.y_model.predict( [[point[0], point[1]]])    
+        x_out[[0]] = self.map_value(x_out[[0]], 0.0, 1.0, motor_x_min, motor_x_max)
+        y_out[[0]] = self.map_value(y_out[[0]], 0.0, 1.0, motor_y_min, motor_y_max)
+        motor_point = [x_out[[0]], y_out[[0]]]
+        motor_point = np.round(motor_point).astype(int)
+        motor_point = np.ravel(motor_point).tolist()
+        print(motor_point)
+
+        return motor_point
+
                     
     #@TODO: sustituir esto de abajo por los modelos obtenidos en la calibración.
     def linearRegression( self ):
@@ -286,8 +323,7 @@ class Controller:
         print( self.A )
         print( self.B )
     
-    #@TODO: integrar el modelo polinomial en esta función.
-    def pixels2steps( self, point ):
+    def pixels2stepsOld( self, point ):
         motor_point = [-1.0,-1.0] 
         if self.callibrated:
             motor_point[0] = int(self.A[0] * point[0] + self.B[0])
