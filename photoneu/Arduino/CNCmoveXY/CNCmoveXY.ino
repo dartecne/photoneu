@@ -52,10 +52,7 @@ void setup() {
  	digitalWrite(dirXPin, HIGH); // Enables the motor to move in a particular direction
  	digitalWrite(dirYPin, HIGH); // Enables the motor to move in a particular direction
  	digitalWrite(dirZPin, HIGH); // Enables the motor to move in a particular direction
-//  testX();
-//  testYZ();
  	Serial.println("CNC Shield Initialized");
-//  calibrate();
   setPoint( xMax/2, yMax/2 );
   stop = false;
 
@@ -71,7 +68,6 @@ void loop() {
    singleStep( stepYPin );
    singleStep( stepZPin );
   }
-//  if( xSP == xPos & ySP == yPos ) Serial.println( "DONE!" );;
   delayMicroseconds(microsBtwnSteps);  
   if(readSerialData() > 0) setPoint(xSP, ySP);
   else sendSerialData();
@@ -243,4 +239,3 @@ void testX() {
  	}
  	delay(1000);
 }
-

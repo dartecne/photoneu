@@ -145,7 +145,8 @@ class CamHandler:
     Clase manejadora de la cámara.
     Instancia 4 targets (4 posibles ratones) de distintos colores
     """
-    def __init__( self ):
+    def __init__( self, save_video = False ):
+
         self.targets = [] #Target()
         self.window_capture_name = 'Video Capture'
         self.window_detection_name = 'Object Detection'
@@ -165,6 +166,14 @@ class CamHandler:
         self.color_s = {'red':[26,255],'green':[115,255],'blue':[130,255],'dark_blue':[140,255]}  
         self.color_v = {'red':[88,255],'green':[50,255],'blue':[68,255],'dark_blue':[93,255]}
         self.cap = cv.VideoCapture( 0 )
+        if( self.cap.isOpened() == False):
+            print("CamHandler::Error opening camera")
+        w = int(self.cap.get(3))
+        h = int(self.cap.get(4))
+        self.save_video = save_video
+        if self.save_video == True:
+            self.video_writer = cv.VideoWriter("output.avi", cv.VideoWriter_fourcc(*'MJPG'), 
+                                           10, (w,h))
         self.backSub = cv.createBackgroundSubtractorMOG2()
         self.fgMask = None
         print( "CamHandler::ctor" )
@@ -267,15 +276,21 @@ class CamHandler:
         x_crop_min = 0#70
         x_crop_max = 0#40
         y_crop_min = 140
-        y_crop_max = 140
+        y_crop_max = 100
+        RESIZE_FACTOR = 2.0
         ret, frame = self.cap.read()
         #frame = cv.imread(self.img_path) 
         if frame is None:
             print( "No frame. Exit..." )
             return -1
+        if self.save_video == True:
+            self.video_writer.write(frame)
+#        print(frame.shape) # (480, 640, 3)
         frame = frame[x_crop_min:(frame.shape[0]-x_crop_max), \
-                      y_crop_min:(frame.shape[1]-y_crop_max)]       
-#        print(frame.shape) # (480, 360, 3)
+                      y_crop_min:(frame.shape[1]-y_crop_max)]    
+ #       print(frame.shape) # (480, 360, 3)
+        frame = cv.resize(frame, (int(frame.shape[1]/RESIZE_FACTOR), int(frame.shape[0]/RESIZE_FACTOR)))   
+ #       print(frame.shape) # (240, 180, 3)
         frame = cv.medianBlur(frame, 5)
         frame = cv.blur(frame, (5,5))
         #denoising, no solo no funciona sino que genera mucho retardo
@@ -321,16 +336,20 @@ class CamHandler:
         contours, hier = cv.findContours( frame_threshold,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE ) 
         filter_contours = [] 
         num_contours = len(contours) # Count the number of contours
+        a = frame.shape[1] * 10 / 100 # mark is about220% of frame width: 370px2
+        a = int(a*a)
+        area_min = a - a / 2# less 20%
+        area_max = a + a / 2 # plus 20%
+
         if num_contours > 0: 
             for c in contours:    # Traverse all contours
                 approx = cv.approxPolyDP( 
                     c, 0.01 * cv.arcLength(c, True), True)
                 area = cv.contourArea( c )
-#                if (area > 60) & (area < 1400) :
-                if (area > 300) & (area < 1400) :
+                if (area > area_min) & (area < area_max) :
                     filter_contours.append(c)
                 else:
-                    print("Contour area out of bonds:" + str(area))
+                    print("Contour area: " + str(area) +  " out of bounds:" + str(area_min) + ", " + str(area_max))
 #                cv.putText(frame, str(area), (20,100), cv.FONT_HERSHEY_SIMPLEX, 0.5,(200,255,0),1)
                 cv.drawContours(frame, contours, -1, (200,255,0), 1)
         return filter_contours

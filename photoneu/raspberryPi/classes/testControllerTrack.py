@@ -10,9 +10,8 @@ from controller import Controller
 
 # test para seguir un target de un color
 
-controller = Controller()
+controller = Controller(True)
 time.sleep(3)
-controller.callibrated = True
 
 controller.set_target_color("green")
 

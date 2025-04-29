@@ -4,6 +4,7 @@ import random
 import math
 from datetime import datetime
 import numpy as np
+import pandas as pd
 import cv2 as cv
 import random
 import logging
@@ -20,19 +21,16 @@ class Controller:
     Controlador principal. Instancia un manejador de la cámara y otro de los motores.
     """
 
-    def __init__(self):
+    def __init__(self, calibrated = False):
         self.cam = CamHandler()
         self.cam.init() # inicia la hebra de deteccion de targets por color
         self.motor = MotorHandler()
         self.motor_steps_thres = 10 # diferencia de pasos para que se envie comando de movimiento al motor
         self.p = np.zeros((2,4)) # points for linear regresion
-        self.callibrated = False
-        self.A = [-24, 56] #[-53.82, 54]
-        self.B = [12511, -1107] #[22008, 3665]
-        self.r = [1.1, 1.1] #coeff de correlacion 
-        self.point = np.array(6) # t_motor, point_motor, t_cam, point_cam 
-        self.x_model = pickle.load(open("../logs/linear_x.sav", 'rb')) 
-        self.y_model = pickle.load(open("../logs/linear_y.sav", 'rb')) 
+        self.calibrated = calibrated
+        if calibrated:
+            self.x_model = pickle.load(open("./linear_x.sav", 'rb')) 
+            self.y_model = pickle.load(open("./linear_y.sav", 'rb')) 
 
         self.log_info = logging.getLogger("info")
         self.log_data = logging.getLogger("data")
@@ -40,8 +38,8 @@ class Controller:
         self.log_data.setLevel(logging.INFO)        
         formater= logging.Formatter('%(message)s')
         info_fh = logging.FileHandler('info.log')
-        file_name = datetime.now().strftime("%Y_%m_%d_%I_%M_%S") + ".log"
-        data_fh = logging.FileHandler(file_name)
+        self.file_name = datetime.now().strftime("%Y_%m_%d_%I_%M_%S") + ".log"
+        data_fh = logging.FileHandler(self.file_name)
         info_fh.setFormatter( formater )
         data_fh.setFormatter( formater )
         self.log_info.addHandler( info_fh )
@@ -72,9 +70,11 @@ class Controller:
         print("END of PBM for target " + str(id))
 
     def pbmON(self):
+#        self.motor.pbmOn()
         print("PBM - ON")
 
     def pbmOFF(self):
+#        self.motor.pbmOff()
         print("PBM - OFF")
 
     def set_target_color(self, color):
@@ -86,8 +86,8 @@ class Controller:
         self.set_target_color("red")
         msg="time_motor,motor_x,motor_y,time_sp,time_cam,cam_x,cam_y"
         self.log_data.info( msg) # escribe cabecera
-        x_min, x_max = 1500, 16000
-        y_min, y_max = 1500, 23000
+        x_min, x_max = 2000, 16000
+        y_min, y_max = 2000, 23000
         for n in range(n_points):
             values_ok = False
             while values_ok == False:
@@ -117,23 +117,23 @@ class Controller:
             self.log_data.info( msg )
 
             
-    def callibrate(self):
+    def calibrate(self):
+        self.take_calibration_data()
+        self.analyze_calibration_data(self.file_name)
+
+    def take_calibration_data( self ):
         self.set_target_color("red")
         msg = "t_total, t_motor, t_cam_1, t_cam2,"
         msg+=" time_motor,motor_x,motor_y,time_cam,cam_x,cam_y"
         self.log_data.info( msg)
-        x_min, x_max = 1500, 16000# 2000, 19000
-        y_min, y_max = 1500, 23000#7000, 18000
-        step = 2000
+        x_min, x_max = 2000, 17000  # 1500, 19000
+        y_min, y_max = 3000, 23000  #7000, 18000
+        step = 4000 #2000
 
-#        p_head = [[19000, 6000], [19000, 18000],[2000, 18000], [2000, 6000],[9700, 12000]]
-#        x = np.linspace(x_min,x_max, n, dtype= int)
-#        y = np.linspace(y_min,y_max, n, dtype = int)
-#        p_head = np.concatenate([x,y]).reshape(2,n)
         p_head = np.mgrid[x_min:x_max:step, y_min:y_max:step].reshape(2,-1).T
         indexes = random.sample(range(len(p_head)), len(p_head))
 
-#        for i in range(len(p_head)) :
+#       Move the header and save header and cam positions
         for i in indexes :
             t0 = cv.getTickCount()
             ts = time.clock_gettime_ns(0)
@@ -141,9 +141,6 @@ class Controller:
             tmotor, tcam1, tcam2, t, x, y = self.getPoint(i)
 #            time.sleep(2)
             t1 = cv.getTickCount()
-            i = i + 1
-            if i > 2: 
-                self.linearRegression()
             msg=""
             t_total = (t1 - t0)/(cv.getTickFrequency())
             msg = str(t_total) + ","
@@ -152,8 +149,35 @@ class Controller:
                 msg += str(self.point[i]) + ","
             msg += str(self.point[5])
             self.log_data.info( msg )
-        
-        self.callibrated = True
+
+
+    def analyze_calibration_data(self, file_name ): 
+        # read data frame and calculate the model
+
+        df = pd.read_csv(file_name)
+    
+        for col in df.columns:
+            df[col+str("_norm")] = (df[col] - df[col].min())/\
+                (df[col].abs().max()- df[col].min())
+            print("min in col " + str(col) + ": " + str(df[col].min))
+            print("max in col " + str(col) + ": " + str(df[col].max))
+        df["cam_x_norm"] = 1 - df["cam_x_norm"]
+
+#        X = df[["cam_x_norm", "cam_y_norm"]]
+        X = df[["cam_x", "cam_y"]]
+
+        #linear regression model 
+        linear_reg_x = LinearRegression()
+        linear_reg_x.fit(X,df["motor_x"]) #X, linear; X_, polynomial
+        linear_reg_y = LinearRegression()
+        linear_reg_y.fit(X,df["motor_y"])
+
+        pickle.dump(linear_reg_x, open("./linear_x.sav", 'wb'))
+        pickle.dump(linear_reg_y, open("./linear_y.sav", 'wb'))
+        self.x_model = pickle.load(open("./linear_x.sav", 'rb')) 
+        self.y_model = pickle.load(open("./linear_y.sav", 'rb')) 
+
+        self.calibrated = True
 
     def getPoint(self, i):
         '''Get cam and motor points when header is stopped. And the times when each point has been detected'''
@@ -195,8 +219,8 @@ class Controller:
         """
         Función principal de movimiento del cabezal 
         """
-        if self.callibrated == False:
-            print("Device not callibrated")
+        if self.calibrated == False:
+            print("Controller::Device not calibrated")
             return -1
         if( x_cam_sp < 0 ) & \
             ( y_cam_sp < 0 ) :
@@ -242,6 +266,22 @@ class Controller:
         """
         Recibe un punto en pixeles y devuelve los steps para llegar a ese punto
         """
+        print(point)
+        motor_point = [-1.0,-1.0] 
+        if self.calibrated:
+            x_out = self.x_model.predict( [[point[0], point[1]]])
+            y_out = self.y_model.predict( [[point[0], point[1]]])    
+        motor_point = [x_out[[0]], y_out[[0]]]
+        motor_point = np.round(motor_point).astype(int)
+        motor_point = np.ravel(motor_point).tolist()
+        print(motor_point)
+
+        return motor_point
+    
+    def pixels2stepsOld( self, point ):
+        """
+        Recibe un punto en pixeles y devuelve los steps para llegar a ese punto
+        """
         # según logs/dataAnalysis.ipynb
         motor_x_min, motor_x_max = 1500, 15500
         motor_y_min, motor_y_max = 1500, 21500
@@ -253,7 +293,7 @@ class Controller:
         point[1] = self.map_value(point[1], cam_y_min, cam_y_max, 0.0, 1.0 )
         print(point)
         motor_point = [-1.0,-1.0] 
-        if self.callibrated:
+        if self.calibrated:
             x_out = self.x_model.predict( [[point[0], point[1]]])
             y_out = self.y_model.predict( [[point[0], point[1]]])    
         x_out[[0]] = self.map_value(x_out[[0]], 0.0, 1.0, motor_x_min, motor_x_max)
@@ -263,70 +303,5 @@ class Controller:
         motor_point = np.ravel(motor_point).tolist()
         print(motor_point)
 
-        return motor_point
-
-                    
-    #@TODO: sustituir esto de abajo por los modelos obtenidos en la calibración.
-    def linearRegression( self ):
-#        self.p[i] = [x_cam,y_cam,x_motor,y_motor]
-# motor_p = A * cam_p + B
-        xm  = np.mean(self.p[:,0]) #x_cam[i]
-        ym  = np.mean(self.p[:,2]) #x_motor[i]
-        sx  = np.sum(self.p[:,0])
-        sy  = np.sum(self.p[:,2])
-        sxy = np.sum(self.p[:,0]*self.p[:,2])
-        sx2 = np.sum(self.p[:,0]**2)
-        sy2 = np.sum(self.p[:,2]**2)
-        n = len(self.p)
-        # coeficientes a0 y a1
-        self.A[0] = (n*sxy-sx*sy)/(n*sx2-sx**2)
-        self.B[0] = ym - self.A[0]*xm
-        numerador = n*sxy - sx*sy
-        raiz1 = np.sqrt(n*sx2-sx**2)
-        raiz2 = np.sqrt(n*sy2-sy**2)
-        self.r[0] = numerador/(raiz1*raiz2)
-
-        xm  = np.mean(self.p[:,1]) #y_cam[i]
-        ym  = np.mean(self.p[:,3]) #y_motor[i]
-        sx  = np.sum(self.p[:,1])
-        sy  = np.sum(self.p[:,3])
-        sxy = np.sum(self.p[:,1]*self.p[:,3])
-        sx2 = np.sum(self.p[:,1]**2)
-        sy2 = np.sum(self.p[:,3]**2)
-        # coeficientes a0 y a1
-        self.A[1] = (n*sxy-sx*sy)/(n*sx2-sx**2)
-        self.B[1] = ym - self.A[1]*xm
-        numerador = n*sxy - sx*sy
-        raiz1 = np.sqrt(n*sx2-sx**2)
-        raiz2 = np.sqrt(n*sy2-sy**2)
-        self.r[1] = numerador/(raiz1*raiz2)
-        print(self.A)
-        print(self.B)
-        print(self.r)
-#        if n > 6: self.callibrated = True
-
-    def calculateCoefficents( self ):
-        x_cam_0 = self.p[0,0]
-        y_cam_0 = self.p[0,1]
-        x_head_0 = self.p[0,2]
-        y_head_0 = self.p[0,3]
-        x_cam_1 = self.p[1,0]
-        y_cam_1 = self.p[1,1]
-        x_head_1 = self.p[1,2]
-        y_head_1 = self.p[1,3]
-        self.A[0] = ( x_head_0 - x_head_1 ) / ( x_cam_0 - x_cam_1 )
-        self.B[0] = x_head_0 - self.A[0] * x_cam_0
-        self.A[1] = ( y_head_0 - y_head_1 ) / ( y_cam_0 - y_cam_1 )
-        self.B[1] = y_head_0 - self.A[1] * y_cam_0           
-        self.callibrated = True
-        print( "calibración OK" )
-        print( self.A )
-        print( self.B )
-    
-    def pixels2stepsOld( self, point ):
-        motor_point = [-1.0,-1.0] 
-        if self.callibrated:
-            motor_point[0] = int(self.A[0] * point[0] + self.B[0])
-            motor_point[1] = int(self.A[1] * point[1] + self.B[1])        
         return motor_point
     

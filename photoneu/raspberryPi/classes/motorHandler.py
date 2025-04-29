@@ -34,7 +34,15 @@ class MotorHandler:
 
     def sendCalibrate(self) :
         msg = "C\0"
-        self.ser.write( msg.encode(encoding= 'ascii') )    
+        self.ser.write( msg.encode(encoding= 'ascii') )
+
+    def pbmOn(self):
+        msg="H\0"
+        self.ser.write( msg.encode(encoding= 'ascii') )
+
+    def pbmOff(self):
+        msg="L\0"
+        self.ser.write( msg.encode(encoding= 'ascii') )
 
     def moveHead( self, x_head, y_head ):
         x_head = max(0,x_head)

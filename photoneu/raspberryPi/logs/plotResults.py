@@ -1,4 +1,3 @@
-# @TODO: guardar el modelo polynomial para utilizarlo en el dia-a-dia de la máquina.
 
 import numpy as np
 import pandas as pd

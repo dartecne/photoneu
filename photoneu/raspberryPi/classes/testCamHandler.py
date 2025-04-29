@@ -4,7 +4,7 @@ import time
 
 from camHandler import CamHandler
 
-cam = CamHandler()
+cam = CamHandler(True)
 cam.init()
 #cam.controlLoop(1111)
 #cam.control_thread.join()

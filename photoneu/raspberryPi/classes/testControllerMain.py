@@ -8,6 +8,7 @@ import sys
 
 from controller import Controller
 
+# Test para realizar la calibración de la máquina
 
 #   posiciones del header en pixeles
 # centro: 288, 227 o bien 324, 242
@@ -17,27 +18,13 @@ from controller import Controller
 # down_right: 490, 357
 
 p_cam = [[220,150], [78,64], [78,277], [300,270], [300,64]]
-controller = Controller()
-time.sleep(9)
-#controller.callibrated = True
-controller.callibrate()
-print("main::calibration OK")
+controller = Controller(calibrated = True)
+time.sleep(3)
+#controller.calibrate()
+#file_name = "2025_04_29_11_06_11.log"
+#controller.analyze_calibration_data(file_name)
 
 for i in range(5):
     controller.moveMotorPixels( p_cam[i][0], p_cam[i][1] )
     time.sleep(1)
-controller.set_target_color('blue')
-
-#while True:
-#    while controller.cam.target.is_moving == False:
-#        x = controller.cam.target.pos[0]
-#        y = controller.cam.target.pos[1]
-#        controller.moveMotorPixels( x, y )
-
-#controller.cam.join()
-#controller.motor_thread.join()
-
-#while True:
-#    key = cv.waitKey( 30 )
-#    if key == ord('q') or key == 27:
-#        break
+#controller.set_target_color('blue')
