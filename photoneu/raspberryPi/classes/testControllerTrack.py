@@ -13,8 +13,6 @@ from controller import Controller
 controller = Controller(True)
 time.sleep(3)
 
-controller.set_target_color("green")
-
 while True:
     x = controller.cam.targets[0].pos[0]
     y = controller.cam.targets[0].pos[1]

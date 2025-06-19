@@ -4,7 +4,8 @@ import serial
 # configure the serial connections (the parameters differs on the device you are connecting to)
 ser = serial.Serial(
     port='/dev/ttyACM0',
-    baudrate=115200,
+    baudrate=230400,
+    #baudrate=115200,
     #baudrate=9600,
     #parity=serial.PARITY_ODD,
     #parity=serial.PARITY_EVEN,
@@ -16,7 +17,7 @@ ser = serial.Serial(
 ser.isOpen()
 
 print ('Enter your commands below.\r\nInsert "exit" to leave the application.')
-msg = "X1111Y1111\r\n"
+msg = "X10000Y12000\r\n"
 #input=1
 print( "Sending... " + msg );
         #ser.write(msg.encode())

@@ -17,12 +17,13 @@ from controller import Controller
 # up_left: 113, 101
 # down_right: 490, 357
 
-p_cam = [[220,150], [78,64], [78,277], [300,270], [300,64]]
-controller = Controller(calibrated = True)
-time.sleep(3)
-#controller.calibrate()
+p_cam = [[220,150], [100,94], [100,277], [250,270], [250,100]]
+controller = Controller()
+input("pulse una tecla para comenzar con la calibración")
+controller.calibrate()
 #file_name = "2025_04_29_11_06_11.log"
 #controller.analyze_calibration_data(file_name)
+input("pulse una tecla para mover el cabezal")
 
 for i in range(5):
     controller.moveMotorPixels( p_cam[i][0], p_cam[i][1] )

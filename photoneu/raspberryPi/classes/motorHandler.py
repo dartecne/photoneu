@@ -24,6 +24,12 @@ class MotorHandler:
                 print(">>>exiting")
                 exit()
 
+    def endSystem( self ):
+        print( "MotorHandler::exiting" )
+        serial.Serial.close()
+        exit()
+
+
     def sendCode( self, msg ) :
         print(">>> sendCode ")
         msg += "\0"
@@ -49,7 +55,7 @@ class MotorHandler:
         y_head = max(0,y_head)
         x_head = min(self.x_max,x_head)
         y_head = min(self.y_max,y_head)
-        print( "moving to: " + str(x_head) + str(", ") + str(y_head) )
+        print( "motorHandler::moving to: " + str(x_head) + str(", ") + str(y_head) )
         msg = "X" + str(int(x_head)).zfill(5) + "Y" + str(int(y_head)).zfill(5) 
         self.sendCode(msg)
     

@@ -75,7 +75,7 @@ class Target:
         self.color_id = ""
 #        self.real_color = np.array([110, 100, 100])  #in HSV
 #        self.pos_limits = np.array([78, 430, 64, 300])
-        self.pos_limits = np.array([22, 350, 28, 450]) # xmin, xmax, ymin, ymax
+        self.pos_limits = np.array([22, 350, 0, 450]) # xmin, xmax, ymin, ymax
         self.mean_color = (0,0,0) # Color del target en BGR 
         self.measured_pos = np.array([0, 0]) # posicion dada por la camara
         self.pos = np.array([0, 0]) # posicion filtrada
@@ -162,9 +162,9 @@ class CamHandler:
 #        self.color_s = {'red':[80,255], 'red_2':[20,255],'yellow':[22,255],'green':[42,255],'blue':[122,255]}  
 #        self.color_v = {'red':[60,130],'red_2':[60,255],'yellow':[22,255],'green':[60,255],'blue':[60,255]}
 #       Estos datos pueden calibrarse utilizando test_inRange.py
-        self.color_h = {'red':[150,180],'green':[60,90],'blue':[87,111],'dark_blue':[114,165]}  #Here is the range of H in the HSV color space represented by the color
-        self.color_s = {'red':[26,255],'green':[115,255],'blue':[130,255],'dark_blue':[140,255]}  
-        self.color_v = {'red':[88,255],'green':[50,255],'blue':[68,255],'dark_blue':[93,255]}
+        self.color_h = {'red':[150,180],'green':[38,88],'blue':[87,111],'dark_blue':[114,165],'yellow':[13,37]}  #Here is the range of H in the HSV color space represented by the color
+        self.color_s = {'red':[40,255],'green':[38,255],'blue':[130,255],'dark_blue':[140,255],'yellow':[78,118]}  
+        self.color_v = {'red':[88,255],'green':[0,255],'blue':[68,255],'dark_blue':[93,255],'yellow':[10,255] }
         self.cap = cv.VideoCapture( 0 )
         if( self.cap.isOpened() == False):
             print("CamHandler::Error opening camera")
@@ -173,7 +173,7 @@ class CamHandler:
         self.save_video = save_video
         if self.save_video == True:
             self.video_writer = cv.VideoWriter("output.avi", cv.VideoWriter_fourcc(*'MJPG'), 
-                                           10, (w,h))
+                                           120, (w,h))
         self.backSub = cv.createBackgroundSubtractorMOG2()
         self.fgMask = None
         print( "CamHandler::ctor" )
@@ -184,20 +184,20 @@ class CamHandler:
         """
         t1 = Target()
         t1.is_tracked = False
-        t1.color_id = "red"
-        t1.mean_color = (0, 0, 255)
+        t1.color_id = "yellow" #"red"
+        t1.mean_color = (255, 255, 0)
         t2 = Target()
         t2.color_id = "green"
         t2.mean_color = (0, 255, 0)
         t3 = Target()
-        t3.color_id = "blue"
-        t3.mean_color = (255,0 ,0)
+        t3.color_id = "red"
+        t3.mean_color = (0,0 ,255)
         t4 = Target()
         t4.color_id = "dark_blue"
         t4.mean_color = (255,100 ,100)
 #        self.targets.append(t1)
-        self.targets.append(t2)
-#        self.targets.append(t3)
+#        self.targets.append(t2)
+        self.targets.append(t3)
 #        self.targets.append(t4)
 #        cv.namedWindow( self.window_capture_name )
 #        cv.namedWindow( self.window_detection_name )
@@ -256,7 +256,7 @@ class CamHandler:
                 cv.circle(frame, (x, y), 5, (255, 255, 0), 1) # circulo central del F. Kalman
 #                cv.putText(frame,str(x) + "," + str(y),(x,y+5), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)
                 i += 1
-                self.showImage( frame, frame_threshold)
+             #   self.showImage( frame, frame_threshold)
                 t5 = cv.getTickCount()
                 t_read = (t1 - t0) / cv.getTickFrequency() # t-leer la imagen
                 t_filter = (t2 - t1_1) / cv.getTickFrequency() # t - filtro color
@@ -325,7 +325,7 @@ class CamHandler:
 #        cv.imshow( self.window_detection_name, frame_threshold )
         cv.imshow( self.window_capture_name, frame )
 #        cv.imshow( "Filtro fondo", self.fgMask )
-        key = cv.waitKey( 30 )
+        key = cv.waitKey( 1 )
         if key == ord('q') or key == 27:
 #            cv.imwrite("frame.jpg", frame)
 #            cv.imwrite("frame_threshold.jpg", frame_threshold)
@@ -338,7 +338,7 @@ class CamHandler:
         num_contours = len(contours) # Count the number of contours
         a = frame.shape[1] * 10 / 100 # mark is about220% of frame width: 370px2
         a = int(a*a)
-        area_min = a - a / 2# less 20%
+        area_min = 80 #a - a / 2# less 20%
         area_max = a + a / 2 # plus 20%
 
         if num_contours > 0: 
