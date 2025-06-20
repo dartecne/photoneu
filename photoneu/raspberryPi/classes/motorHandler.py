@@ -29,7 +29,6 @@ class MotorHandler:
         serial.Serial.close()
         exit()
 
-
     def sendCode( self, msg ) :
         print(">>> sendCode ")
         msg += "\0"
