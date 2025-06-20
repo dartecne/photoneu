@@ -49,6 +49,7 @@ class Controller:
         print( "Controller::exiting" )
         self.cam.endSystem()
         self.motor.endSystem()
+        exit()
 
     def applyTreatment( self, id ):
         msg="time_stamp,target_id,motor_x,motor_y,cam_x,cam_y,duration"
@@ -134,7 +135,7 @@ class Controller:
         self.log_data.info( msg)
         x_min, x_max = 2000, 16000  # 1500, 19000
         y_min, y_max = 2000, 23000  #7000, 18000
-        step = 4000 #2000
+        step = 2000 #2000
 
         p_head = np.mgrid[x_min:x_max:step, y_min:y_max:step].reshape(2,-1).T
         indexes = random.sample(range(len(p_head)), len(p_head))
@@ -145,6 +146,7 @@ class Controller:
             ts = time.clock_gettime_ns(0)
             if(p_head[i][0] > x_max): 
                 p_head[i][0] = x_max
+
             if(p_head[i][1] > y_max): 
                 p_head[i][1] = x_max
             self.motor.moveHead( p_head[i][0], p_head[i][1] )

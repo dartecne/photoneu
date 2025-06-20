@@ -256,7 +256,7 @@ class CamHandler:
                 cv.circle(frame, (x, y), 5, (255, 255, 0), 1) # circulo central del F. Kalman
 #                cv.putText(frame,str(x) + "," + str(y),(x,y+5), cv.FONT_HERSHEY_SIMPLEX, 0.5,(0,0,255),1)
                 i += 1
-             #   self.showImage( frame, frame_threshold)
+                self.showImage( frame, frame_threshold)
                 t5 = cv.getTickCount()
                 t_read = (t1 - t0) / cv.getTickFrequency() # t-leer la imagen
                 t_filter = (t2 - t1_1) / cv.getTickFrequency() # t - filtro color

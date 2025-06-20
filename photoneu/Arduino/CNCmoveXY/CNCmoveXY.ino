@@ -20,20 +20,28 @@ const int limitYPin = 10;
 const int limitZPin = 11;
 
 const int stepsPerRev=200;
-unsigned long pulseWidthMicros = 100; 	// microseconds
-unsigned long microsBtwnSteps = 2000; // milliseconds
+unsigned long pulseWidthMicros = 10; 	// microseconds
+unsigned long microsBtwnSteps = 100; 
+unsigned long maxMicrosBtwnSteps= 200;
+unsigned long minMicrosBtwnSteps= 20;
 
-unsigned long curMicros;
-unsigned long prevStepMicros = 0;
+long curMicros;
+long prevStepMicros = 0;
 
-int xPos = 0, yPos = 0; // posicion instantánea del cabezal
-int yMax = 1540;  // valores aproximados obtenidos después de la calibración
-int xMax = 1250;
-int xSP = 0, ySP = 0; // Set Point, donde debe ir el cabezal
+//int yMax = 1540;  // valores aproximados obtenidos después de la calibración
+int yMax = 25000;//24272;  // resolucion de 1/16
+//int xMax = 1250;  
+int xMax = 23000;  // 19431 con una resolucion de 1/16
+int xPos = xMax/2, yPos = yMax/2;
+int xSP = xMax/2, ySP = yMax/2; // Set Point, donde debe ir el cabezal
 bool stop = true;
+bool calibrated = false;
+long tau = 0;
 
 void setup() {
- 	Serial.begin(9600);
+// 	Serial.begin(115200);
+   Serial.begin(230400); // no hay mucha diferencia
+//  while( !Serial );
  	pinMode(enPin, OUTPUT);
  	digitalWrite(enPin, LOW);
 
@@ -52,53 +60,97 @@ void setup() {
  	digitalWrite(dirXPin, HIGH); // Enables the motor to move in a particular direction
  	digitalWrite(dirYPin, HIGH); // Enables the motor to move in a particular direction
  	digitalWrite(dirZPin, HIGH); // Enables the motor to move in a particular direction
- 	Serial.println("CNC Shield Initialized");
+//  testX();
+//  testYZ();
+//  microsBtwnSteps = minMicrosBtwnSteps;
+  microsBtwnSteps = maxMicrosBtwnSteps;
+// 	Serial.println("CNC Shield Initialized OK");
+  calibrate();
   setPoint( xMax/2, yMax/2 );
   stop = false;
-
+  prevStepMicros = micros();
 }
 
 void loop() {
   curMicros = micros();
   while( stop ) checkLimits();
-  if(xSP - xPos > 0 ) setXdirection(HIGH); else setXdirection(LOW);
-  if(ySP - yPos > 0 ) setYdirection(HIGH); else setYdirection(LOW);
+  if(xSP - xPos > 0 ) setXdirection(LOW); else setXdirection(HIGH);
+  if(ySP - yPos > 0 ) setYdirection(LOW); else setYdirection(HIGH);
   if( xSP != xPos ) singleStep( stepXPin );
   if( ySP != yPos ) {
    singleStep( stepYPin );
    singleStep( stepZPin );
   }
-  delayMicroseconds(microsBtwnSteps);  
-  if(readSerialData() > 0) setPoint(xSP, ySP);
-  else sendSerialData();
-  delay(100);
+  readSerialData();
+  tau = curMicros - prevStepMicros;
+  if(tau < microsBtwnSteps) {
+    delayMicroseconds( microsBtwnSteps ); 
+  } 
+    prevStepMicros = curMicros;
+//  delay(60);
 }
 
 int readSerialData() {
   if(!Serial.available()) return 0; // espera datos
-  String str = Serial.readString();
-//  if(str.length() != 10 ) return;
-  if(str[0] == 'X') xSP = string2number( str, 1, 4 );
-//  Serial.println( xSP );
-  if(str[5] == 'Y') ySP = string2number( str, 6, 4 );
-  if(str == "C") calibrate();
+  String str = "X12345Y12345";
+  str = Serial.readStringUntil('\0');
+  str.trim();
+  if( str[0] == 'P' ) sendMotorPosition();
+  else if( str[0] == 'E' ) sendSPerror();
+  else if( str[0] == 'Q' ) sendCalibrated();
+  else if( str[0] == 'C' ) {
+    calibrate();
+    setPoint( xMax/2, yMax/2 );
+  } else if(str[0] == 'X') {
+    xSP = string2number( str, 1, 5 );
+//      if(str[6] == 'Y') ySP = string2number( str, 7, 5 );
+    ySP = string2number( str, 7, 5 );
+    setPoint(xSP, ySP);
+  }
   return str.length();
 }
 
-int sendSerialData() {
-  String msg = String();
-  msg = "X";
-  msg += str(123456);
-  msg += "Y"; 
-  msg += "098765";
+int sendMotorPosition() {
+  String msg = String(millis());
+  msg += ',';
+  msg += xPos;
+  msg += ',';
+  msg += yPos;
   Serial.println(msg);
   return msg.length();
 }
 
+int sendSPerror() {
+  String msg = String(millis());
+  msg += ',';
+  msg += xPos - xSP;
+  msg += ',';
+  msg += yPos - ySP;
+  Serial.println(msg);
+  return msg.length();
+}
+
+int sendCalibrated() {
+  String msg = String(millis());
+  msg += ',';
+  msg += calibrated;
+  Serial.println(msg);
+  return msg.length();
+  
+}
+
+void printStr( String str ) {
+  for( int i = 0; i < str.length(); i++ ) {
+    Serial.print( str[i] ); Serial.print( " " ); Serial.println( str[i], DEC );
+//    Serial.write(str[i]);
+  }
+}
+
 int string2number(String str, int init, int num) {
-  String strTemp = "0000";
+  String strTemp = "";
   for( int i = 0; i < num; i++ ) {
-    strTemp[i] = str[init + i];
+    strTemp += str.charAt(init + i);
+ //   Serial.println(strTemp);
   }
   return(strTemp.toInt());
 }
@@ -122,7 +174,7 @@ void calibrate() {
   }
 //  Serial.println("Y calibrated!");
 //  Serial.print("Y steps: ");Serial.println( yPos );
-  yPos = yMax;
+  yPos = 0;
   setXdirection(HIGH);
   while( digitalRead(limitXPin) ) {
     singleStep( stepXPin );
@@ -133,14 +185,15 @@ void calibrate() {
     singleStep( stepXPin );
     delayMicroseconds(microsBtwnSteps);
   }
-//  Serial.println("X calibrated!");
 //  Serial.print("X steps: ");Serial.println( xPos );
-  xPos = xMax;
+//  Serial.println("ACK");
+  xPos = 0;
+  calibrated = true;
 }
 
 void setPoint( unsigned int x, unsigned int y ) {
-  xSP = x;
-  ySP = y;
+  xSP = constrain( x, 0, xMax );
+  ySP = constrain( y, 0, yMax );
   stop = false;
 //  Serial.print( "Going to xSP: " ); Serial.print(xSP); 
 //  Serial.print(" ySP: "); Serial.println( ySP );
@@ -169,16 +222,16 @@ void singleStep( int sPin) {
   delayMicroseconds(pulseWidthMicros);
   digitalWrite(sPin, LOW);
   if(sPin == stepXPin) {
-    if(xDir) xPos++; else xPos--;
+    if(xDir) xPos--; else xPos++;
   }
   else if(sPin == stepYPin) {
-    if(yDir) yPos++; else yPos--;
+    if(yDir) yPos--; else yPos++;
   }
   if(xPos < 0 ) xPos = 0;
   if(yPos < 0 ) yPos = 0;
 //  Serial.print(xPos); Serial.print(", "); Serial.println(yPos);
 
-//  checkLimits();
+ // checkLimits();
 }
 
 void checkLimits() {

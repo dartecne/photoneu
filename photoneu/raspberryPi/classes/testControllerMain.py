@@ -23,9 +23,11 @@ input("pulse una tecla para comenzar con la calibración")
 controller.calibrate()
 #file_name = "2025_04_29_11_06_11.log"
 #controller.analyze_calibration_data(file_name)
-input("pulse una tecla para mover el cabezal")
+input("pulse una tecla para finalizar")
+controller.endSystem()
+#input("pulse una tecla para mover el cabezal")
 
-for i in range(5):
-    controller.moveMotorPixels( p_cam[i][0], p_cam[i][1] )
-    time.sleep(1)
+#for i in range(5):
+#    controller.moveMotorPixels( p_cam[i][0], p_cam[i][1] )
+#    time.sleep(1)
 #controller.set_target_color('blue')
