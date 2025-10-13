@@ -127,6 +127,8 @@ class Target:
 #        print("CamHandler::v_head = " + str(self.vel))
 #        self.vel_mod = int(math.sqrt(self.vel_mod))
 
+        # @ TODO: revisar esta comprobación. Porqué 4 frames? Dónde poner el umbral?
+        
         if self.vel_mod > self.v_thres :
             self.n_stopped_frames = 0
         else:
